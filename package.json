@@ -1,0 +1,23 @@
+{
+  "name": "process-selenium-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha tests/**/*.test.js --reporter mochawesome",
+    "test_login": "mocha tests/login/login.test.js --reporter mochawesome"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "selenium-webdriver": "^4.48.0"
+  },
+  "devDependencies": {
+    "chai": "^6.2.2",
+    "mocha": "^10.8.2",
+    "mochawesome": "^7.1.3"
+  }
+}
