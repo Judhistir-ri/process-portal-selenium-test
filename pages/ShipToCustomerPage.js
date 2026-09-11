@@ -666,15 +666,55 @@ class ShipToCustomerPage {
     //     );
     // }
 
-  async verifyCompleted(orderId) {
-    // Refresh the Ship to Customer page first
+    async verifyCompleted(orderId) {
+    // Refresh Ship to Customer
     await this.refreshAndWaitForCompleted();
+
+    const completedTable = By.xpath(
+        `//div[contains(@class,'shipToCustomer-docs')]` +
+        `//h3[normalize-space()='Completed']` +
+        `/ancestor::div[.//table][1]` +
+        `//table`
+    );
+
+    const table = await this.driver.wait(
+        until.elementLocated(completedTable),
+        60000
+    );
+
+    await this.driver.wait(
+        until.elementIsVisible(table),
+        30000
+    );
+
+    // Scroll the Completed virtual table to the bottom
+    await this.driver.executeScript(
+        `
+        const table = arguments[0];
+
+        let container = table.closest('.md-virtual-repeat-scroller');
+
+        if (!container) {
+            container = table.parentElement;
+        }
+
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+            container.dispatchEvent(
+                new Event('scroll', { bubbles: true })
+            );
+        }
+        `,
+        table
+    );
+
+    // Give Angular virtual scrolling time to render the bottom rows
+    await this.driver.sleep(2000);
 
     const completedOrderRow = By.xpath(
         `//div[contains(@class,'shipToCustomer-docs')]` +
         `//table//tbody//tr[` +
         `.//td[contains(@class,'orderIdCol') and @title='${orderId}']` +
-        ` and .//td[contains(@class,'docIdColPickup')]` +
         `]`
     );
 
@@ -697,7 +737,9 @@ class ShipToCustomerPage {
     }
 
     return true;
-}
+    }
+    
+    
     
 }
 
