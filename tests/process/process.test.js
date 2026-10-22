@@ -12,367 +12,255 @@ const ShipToCustomerPage = require("../../pages/ShipToCustomerPage");
 require("dotenv").config();
 
 describe("Processor Portal - Complete Order Processing Flow", function () {
+  this.timeout(2400000);
+
+  let driver;
+
+  let loginPage;
+  let newPage;
+  let expectedPage;
+  let dropOffPage;
+  let pickupPage;
+  let shipToCustomerPage;
+
+  before(async function () {
+    this.timeout(300000);
+
+    driver = await getDriver();
+
+    loginPage = new LoginPage(driver);
+    newPage = new NewPage(driver);
+    expectedPage = new ExpectedPage(driver);
+    dropOffPage = new DropOffPage(driver);
+    pickupPage = new PickupPage(driver);
+    shipToCustomerPage = new ShipToCustomerPage(driver);
+  });
+
+  it("TC_PROCESS_FULL_001 - Complete order processing from Login to Ship To Customer", async function () {
     this.timeout(2400000);
 
-    let driver;
+    // =====================================================
+    // LOGIN
+    // =====================================================
 
-    let loginPage;
-    let newPage;
-    let expectedPage;
-    let dropOffPage;
-    let pickupPage;
-    let shipToCustomerPage;
+    await loginPage.open();
 
-    before(async function () {
-        this.timeout(300000);
+    await loginPage.login(process.env.EMAIL, process.env.PASSWORD);
 
-        driver = await getDriver();
+    // =====================================================
+    // NEW
+    // =====================================================
 
-        loginPage = new LoginPage(driver);
-        newPage = new NewPage(driver);
-        expectedPage = new ExpectedPage(driver);
-        dropOffPage = new DropOffPage(driver);
-        pickupPage = new PickupPage(driver);
-        shipToCustomerPage =
-            new ShipToCustomerPage(driver);
+    await newPage.waitForPage();
+
+    // =====================================================
+    // EXPECTED
+    // =====================================================
+
+    await expectedPage.open();
+
+    const orderId = await expectedPage.getTopOrderId();
+
+    expect(orderId).to.match(/^\d+$/);
+
+    await expectedPage.clickOrderId(orderId);
+
+    await expectedPage.waitForOrderDetails();
+
+    const docId = await expectedPage.getDocId();
+
+    expect(docId).to.match(/^\d+$/);
+
+    const country = process.env.PROCESS_COUNTRY || "Afghanistan";
+
+    await expectedPage.verifyOrderDetails({
+      orderId,
+      docId,
+      country,
     });
 
-    it(
-        "TC_PROCESS_FULL_001 - Complete order processing from Login to Ship To Customer",
-        async function () {
-            this.timeout(2400000);
+    // =====================================================
+    // GET PROCESSING STEPS DYNAMICALLY
+    // =====================================================
 
-            // =====================================================
-            // LOGIN
-            // =====================================================
+    const processingSteps = await expectedPage.getProcessingStepsFromOrder();
 
-            await loginPage.open();
+    expect(processingSteps.length).to.be.greaterThan(0);
 
-            await loginPage.login(
-                process.env.EMAIL,
-                process.env.PASSWORD
-            );
+    console.log("");
+    console.log(`Order ID: ${orderId}`);
 
-            // =====================================================
-            // NEW
-            // =====================================================
+    console.log(`Doc ID: ${docId}`);
 
-            await newPage.waitForPage();
+    console.log(`Country: ${country}`);
 
-            // =====================================================
-            // EXPECTED
-            // =====================================================
+    console.log(`Processing Step Count: ${processingSteps.length}`);
 
-            await expectedPage.open();
+    console.log(`Processing Steps: ${processingSteps.join(", ")}`);
 
-            const orderId =
-                await expectedPage.getTopOrderId();
+    // =====================================================
+    // SAVE & PROCESS
+    // =====================================================
 
-            expect(orderId).to.match(/^\d+$/);
+    await expectedPage.clickSaveAndProcess();
 
-            await expectedPage.clickOrderId(
-                orderId
-            );
+    // =====================================================
+    // PROCESS EVERY STEP
+    // =====================================================
 
-            await expectedPage.waitForOrderDetails();
+    for (let i = 0; i < processingSteps.length; i++) {
+      const currentStep = processingSteps[i];
 
-            const docId =
-                await expectedPage.getDocId();
+      console.log("");
+      console.log(
+        `Processing Step ${i + 1}/${processingSteps.length}: ${currentStep}`,
+      );
 
-            expect(docId).to.match(/^\d+$/);
+      // =================================================
+      // DROP OFF
+      // =================================================
 
-            const country =
-                process.env.PROCESS_COUNTRY ||
-                "Afghanistan";
+      await dropOffPage.open();
 
-            await expectedPage.verifyOrderDetails({
-                orderId,
-                docId,
-                country
-            });
+      await dropOffPage.searchOrder(orderId);
 
-            // =====================================================
-            // GET PROCESSING STEPS DYNAMICALLY
-            // =====================================================
+      // Verify Order ID
+      await dropOffPage.verifyOrderId(orderId);
 
-            const processingSteps =
-                await expectedPage.getProcessingStepsFromOrder();
+      // Verify Stop exists
+      const dropOffStop = await dropOffPage.verifyStop(orderId);
 
-            expect(processingSteps.length)
-                .to.be.greaterThan(0);
+      console.log(`Drop Off Stop: ${dropOffStop}`);
 
-            console.log("");
-            console.log(
-                `Order ID: ${orderId}`
-            );
+      // =================================================
+      // CHECKBOX
+      // =================================================
 
-            console.log(
-                `Doc ID: ${docId}`
-            );
+      await dropOffPage.selectOrder(orderId);
 
-            console.log(
-                `Country: ${country}`
-            );
+      // =================================================
+      // COURIER
+      // =================================================
 
-            console.log(
-                `Processing Step Count: ${processingSteps.length}`
-            );
+      await dropOffPage.clickCourier();
 
-            console.log(
-                `Processing Steps: ${processingSteps.join(", ")}`
-            );
+      await dropOffPage.waitForCourierCheckbox(orderId);
 
-            // =====================================================
-            // SAVE & PROCESS
-            // =====================================================
+      // await dropOffPage.verifyOrderInCourier(
+      //     orderId
+      // );
 
-            await expectedPage.clickSaveAndProcess();
+      // =================================================
+      // COMPLETE
+      // =================================================
 
-            // =====================================================
-            // PROCESS EVERY STEP
-            // =====================================================
 
-            for (
-                let i = 0;
-                i < processingSteps.length;
-                i++
-            ) {
-                const currentStep =
-                    processingSteps[i];
+      await dropOffPage.processCourier(orderId, docId);
 
-                console.log("");
-                console.log(
-                    `Processing Step ${i + 1}/${processingSteps.length}: ${currentStep}`
-                );
+      // =================================================
+      // PICKUP
+      // =================================================
 
-                // =================================================
-                // DROP OFF
-                // =================================================
+      await pickupPage.open();
 
-                await dropOffPage.open();
-
-                await dropOffPage.searchOrder(
-                    orderId
-                );
-
-                // Verify Order ID
-                await dropOffPage.verifyOrderId(
-                    orderId
-                );
-
-                // Verify Stop exists
-                const dropOffStop =
-                    await dropOffPage.verifyStop(
-                        orderId
-                    );
+      await pickupPage.searchOrder(orderId);
 
-                console.log(
-                    `Drop Off Stop: ${dropOffStop}`
-                );
+      // Verify Order ID
+      await pickupPage.verifyOrderId(orderId);
 
-                // =================================================
-                // CHECKBOX
-                // =================================================
+      // Verify Stop
+      const pickupStop = await pickupPage.verifyStop(orderId);
 
-                await dropOffPage.selectOrder(
-                    orderId
-                );
+      console.log(`Pickup Stop: ${pickupStop}`);
 
-                // =================================================
-                // COURIER
-                // =================================================
+      // Checkbox
+      await pickupPage.selectOrder(orderId);
 
-                // await dropOffPage.clickCourier();
+      // Complete
+      await pickupPage.clickComplete();
 
-                // await dropOffPage.verifyOrderInCourier(
-                //     orderId
-                // );
+      // Change Date -> Save
+      await pickupPage.saveChangeDate();
 
-                // await dropOffPage.selectCourierOrder(
-                //     orderId
-                // );
-
-                // await dropOffPage.clickCourier();
+      // =================================================
+      // PICKUP COMPLETED
+      // =================================================
 
-                // await dropOffPage.waitForOrderInCourierWithRefresh(
-                //     orderId
-                // );
+      // await pickupPage.clickCompletedDocId(
+      //     orderId
+      // );
 
-                await dropOffPage.clickCourier();
-
-                await dropOffPage.waitForCourierCheckbox(
-                    orderId
-                );
-
-                // await dropOffPage.verifyOrderInCourier(
-                //     orderId
-                // );
+      // =================================================
+      // VERIFY CURRENT STEP GREEN
+      // =================================================
 
-                // =================================================
-                // COMPLETE
-                // =================================================
+      // await pickupPage.verifyCompletedStep(
+      //     currentStep
+      // );
 
-                // const incomingTrackingId =
-                //     `IN${orderId}${String(Date.now()).slice(-6)}`;
-
-                // const outgoingTrackingId =
-                //     `OUT${orderId}${String(Date.now()).slice(-6)}`;
+      console.log(`${currentStep} completed successfully.`);
 
-                // await dropOffPage.processCourier(
-                //     orderId,
-                //     docId,
-                //     incomingTrackingId,
-                //     outgoingTrackingId
-                // );
+      // =================================================
+      // CONTINUE TO NEXT STEP
+      // =================================================
+    }
 
-                await dropOffPage.processCourier(
-                orderId,
-                docId
-                );
-                
-
-                // =================================================
-                // PICKUP
-                // =================================================
-
-                await pickupPage.open();
+    // =====================================================
+    // ALL PROCESSING STEPS COMPLETED
+    // =====================================================
 
-                await pickupPage.searchOrder(
-                    orderId
-                );
+    console.log("");
+    console.log("All processing steps completed.");
 
-                // Verify Order ID
-                await pickupPage.verifyOrderId(
-                    orderId
-                );
+    // =====================================================
+    // SHIP TO CUSTOMER
+    // =====================================================
 
-                // Verify Stop
-                const pickupStop =
-                    await pickupPage.verifyStop(
-                        orderId
-                    );
-
-                console.log(
-                    `Pickup Stop: ${pickupStop}`
-                );
-
-                // Checkbox
-                await pickupPage.selectOrder(
-                    orderId
-                );
-
-                // Complete
-                await pickupPage.clickComplete();
-
-                // Change Date -> Save
-                await pickupPage.saveChangeDate();
-
-                // =================================================
-                // PICKUP COMPLETED
-                // =================================================
-
-                // await pickupPage.clickCompletedDocId(
-                //     orderId
-                // );
-
-                // =================================================
-                // VERIFY CURRENT STEP GREEN
-                // =================================================
-
-                // await pickupPage.verifyCompletedStep(
-                //     currentStep
-                // );
-
-                console.log(
-                    `${currentStep} completed successfully.`
-                );
-
-                // =================================================
-                // CONTINUE TO NEXT STEP
-                // =================================================
-            }
-
-            // =====================================================
-            // ALL PROCESSING STEPS COMPLETED
-            // =====================================================
-
-            console.log("");
-            console.log(
-                "All processing steps completed."
-            );
-
-            // =====================================================
-            // SHIP TO CUSTOMER
-            // =====================================================
-
-            await shipToCustomerPage.open();
-
-            await shipToCustomerPage.searchOrder(
-                orderId
-            );
-
-            await shipToCustomerPage.verifyReadyToShip(
-                orderId
-            );
-
-            // Checkbox
-            await shipToCustomerPage.selectOrder(
-                orderId
-            );
-
-            // Complete
-            await shipToCustomerPage.clickComplete();
-
-            // Tracking ID + Courier
-            await shipToCustomerPage.fillOutgoingTrackingAndCourier(
-                orderId
-            );
-
-            // Save & Complete
-            await shipToCustomerPage.saveAndComplete();
-
-            // =====================================================
-            // SHIP TO CUSTOMER COMPLETED
-            // =====================================================
-
-            // await shipToCustomerPage.verifyCompleted(
-            //     orderId
-            // );
-
-            // =====================================================
-            // FINAL PASS
-            // =====================================================
-
-            console.log("");
-            console.log(
-                "=========================================="
-            );
-            console.log(
-                "FINAL PASS"
-            );
-            console.log(
-                `Order ID: ${orderId}`
-            );
-            console.log(
-                `Doc ID: ${docId}`
-            );
-            console.log(
-                `Processing Steps Completed: ${processingSteps.join(", ")}`
-            );
-            console.log(
-                "Ship To Customer: Completed"
-            );
-            console.log(
-                "=========================================="
-            );
-        }
-    );
-
-    after(async function () {
-        if (driver) {
-            try {
-                await driver.quit();
-            } catch (error) {}
-        }
-    });
+    await shipToCustomerPage.open();
+
+    await shipToCustomerPage.searchOrder(orderId);
+
+    await shipToCustomerPage.verifyReadyToShip(orderId);
+
+    // Checkbox
+    await shipToCustomerPage.selectOrder(orderId);
+
+    // Complete
+    await shipToCustomerPage.clickComplete();
+
+    // Tracking ID + Courier
+    await shipToCustomerPage.fillOutgoingTrackingAndCourier(orderId);
+
+    // Save & Complete
+    await shipToCustomerPage.saveAndComplete();
+
+    // =====================================================
+    // SHIP TO CUSTOMER COMPLETED
+    // =====================================================
+
+    // await shipToCustomerPage.verifyCompleted(
+    //     orderId
+    // );
+
+    // =====================================================
+    // FINAL PASS
+    // =====================================================
+
+    console.log("");
+    console.log("==========================================");
+    console.log("FINAL PASS");
+    console.log(`Order ID: ${orderId}`);
+    console.log(`Doc ID: ${docId}`);
+    console.log(`Processing Steps Completed: ${processingSteps.join(", ")}`);
+    console.log("Ship To Customer: Completed");
+    console.log("==========================================");
+  });
+
+  after(async function () {
+    if (driver) {
+      try {
+        await driver.quit();
+      } catch (error) {}
+    }
+  });
 });
