@@ -606,6 +606,73 @@ it(
     }
 );
 
+// ============================================================
+// TC_DROPOFF_011 - Verify totals for each Stop filter
+// ============================================================
 
+it(
+    "TC_DROPOFF_011 - Verify DropOff Queue, Courier and Completed totals for each Stop",
+    async function () {
+        this.timeout(600000);
+
+        const stops = [
+            "Any Stop",
+            "CC",
+            "SOS",
+            "DOS",
+            "EMB1",
+            "DC EMB",
+            "ARAB CHAMBER",
+            "AGSHF",
+            "MCCC",
+            "USQBC",
+            "INT-EMB",
+            "DISPATCH",
+            "VISA",
+            "TRANSLATION",
+            "NOTARY",
+            "E-APP",
+            "Out Of States"
+        ];
+
+        for (const stopName of stops) {
+            console.log(
+                `\n========== Testing Stop: ${stopName} ==========`
+            );
+
+            // Select the Stop dropdown option and wait for refresh.
+            await dropOffDetail.selectStopFilter(stopName);
+
+            // Read the updated totals from all three panels.
+            const queueTotal =
+                await dropOffDetail.getSectionTotal("DropOff Queue");
+
+            const courierTotal =
+                await dropOffDetail.getSectionTotal("Courier");
+
+            const completedTotal =
+                await dropOffDetail.getSectionTotal("Completed");
+
+            console.log(
+                `${stopName} | ` +
+                `DropOff Queue: ${queueTotal} | ` +
+                `Courier: ${courierTotal} | ` +
+                `Completed: ${completedTotal}`
+            );
+
+            // Verify all three totals are valid non-negative numbers.
+            expect(queueTotal).to.be.a("number");
+            expect(queueTotal).to.be.at.least(0);
+
+            expect(courierTotal).to.be.a("number");
+            expect(courierTotal).to.be.at.least(0);
+
+            expect(completedTotal).to.be.a("number");
+            expect(completedTotal).to.be.at.least(0);
+        }
+
+        console.log("\n✓ All Stop filters were tested.");
+    }
+);
     
 });

@@ -1088,6 +1088,62 @@ async getDocumentCategoryPanelTotal(panelName) {
   return Number(match[1].replace(/,/g, ""));
 }
 
+  // ============================================================
+// SELECT STOP FILTER
+// ============================================================
+async selectStopFilter(stopName) {
+    await this.waitForLoadingToFinish(120000);
+
+    const stopDropdown = By.css(
+        "select[ng-model='searchOptions.stopFilter']"
+    );
+
+    const dropdown = await this.driver.wait(
+        until.elementLocated(stopDropdown),
+        30000,
+        "Stop dropdown was not found."
+    );
+
+    await this.driver.wait(
+        until.elementIsVisible(dropdown),
+        15000,
+        "Stop dropdown is not visible."
+    );
+
+    await this.driver.executeScript(
+        "arguments[0].scrollIntoView({block: 'center'});",
+        dropdown
+    );
+
+    const select = new Select(dropdown);
+
+    // Read the real options displayed by the application.
+    const options = await select.getOptions();
+    const optionNames = await Promise.all(
+        options.map(option => option.getText())
+    );
+
+    console.log("Available stops:", optionNames);
+
+    // Select the requested stop.
+    await select.selectByVisibleText(stopName);
+
+    // Verify the selection actually changed.
+    const selectedOption = await select.getFirstSelectedOption();
+    const selectedText = (await selectedOption.getText()).trim();
+
+    if (selectedText !== stopName) {
+        throw new Error(
+            `Stop selection failed. Expected "${stopName}", got "${selectedText}".`
+        );
+    }
+
+    console.log(`✓ Selected Stop: ${selectedText}`);
+
+    // Wait for the application to refresh the counts.
+    await this.waitForLoadingToFinish(120000);
+    await this.driver.sleep(1000);
+    }
     
     
 
