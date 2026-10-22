@@ -480,6 +480,131 @@ it(
     }
 );
 
+    // ============================================================
+// TC_DROPOFF_010 - Verify totals for each Document Category
+// ============================================================
+
+// it(
+//   "TC_DROPOFF_010 - Verify DropOff Queue, Courier and Completed totals for each document category",
+//   async function () {
+//     this.timeout(300000);
+
+//     const documentCategories = [
+//       "All Categories",
+//       "Shipping",
+//       "Federal Government",
+//       "General",
+//       "International",
+//       "Visa",
+//       "Translation",
+//       "Dispatch",
+//       "Notary"
+//     ];
+
+//     for (const category of documentCategories) {
+//       console.log(
+//         `\n========== Document Category: ${category} ==========`
+//       );
+
+//       // 1. Select one category from the Document Category dropdown.
+//       await dropOffDetail.selectDocumentCategory(category);
+
+//       // 2. Read the totals from all three panels.
+//       const queueTotal =
+//         await dropOffDetail.getDocumentCategoryPanelTotal(
+//           "DropOff Queue"
+//         );
+
+//       const courierTotal =
+//         await dropOffDetail.getDocumentCategoryPanelTotal(
+//           "Courier"
+//         );
+
+//       const completedTotal =
+//         await dropOffDetail.getDocumentCategoryPanelTotal(
+//           "Completed"
+//         );
+
+//       // 3. Print the counts for this category.
+//       console.log(`Category: ${category}`);
+//       console.log(`DropOff Queue Total: ${queueTotal}`);
+//       console.log(`Courier Total: ${courierTotal}`);
+//       console.log(`Completed Total: ${completedTotal}`);
+
+//       // 4. Validate that all three totals were read successfully.
+//       expect(queueTotal, `${category}: invalid DropOff Queue total`)
+//         .to.be.a("number")
+//         .and.to.be.at.least(0);
+
+//       expect(courierTotal, `${category}: invalid Courier total`)
+//         .to.be.a("number")
+//         .and.to.be.at.least(0);
+
+//       expect(completedTotal, `${category}: invalid Completed total`)
+//         .to.be.a("number")
+//         .and.to.be.at.least(0);
+//     }
+
+//     console.log(
+//       "\n✓ Verified totals for every Document Category."
+//     );
+//   }
+// );
+
+    
+it(
+    "TC_DROPOFF_010 - Verify DropOff Queue, Courier and Completed totals for each document category",
+    async function () {
+        this.timeout(300000);
+
+        const categories = [
+            "All Categories",
+            "Shipping",
+            "Federal Government",
+            "General",
+            "International",
+            "Visa",
+            "Translation",
+            "Dispatch",
+            "Notary"
+        ];
+
+        for (const category of categories) {
+            console.log(
+                `\n========== Document Category: ${category} ==========`
+            );
+
+            // Select the category and wait for the page to update.
+            await dropOffDetail.selectDocumentCategory(category);
+
+            // Read totals only after the category is selected.
+            const queueTotal =
+                await dropOffDetail.getSectionTotal("DropOff Queue");
+
+            const courierTotal =
+                await dropOffDetail.getSectionTotal("Courier");
+
+            const completedTotal =
+                await dropOffDetail.getSectionTotal("Completed");
+
+            console.log(
+                `${category} | ` +
+                `DropOff Queue: ${queueTotal} | ` +
+                `Courier: ${courierTotal} | ` +
+                `Completed: ${completedTotal}`
+            );
+
+            expect(queueTotal).to.be.a("number");
+            expect(queueTotal).to.be.at.least(0);
+
+            expect(courierTotal).to.be.a("number");
+            expect(courierTotal).to.be.at.least(0);
+
+            expect(completedTotal).to.be.a("number");
+            expect(completedTotal).to.be.at.least(0);
+        }
+    }
+);
 
 
     

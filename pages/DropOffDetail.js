@@ -96,49 +96,15 @@ this._selectedCourierDocuments_ = By.xpath(
       // Inside the DropOffDetail constructor
 this.completedNoDocumentsMessage = By.xpath(
   "//*[contains(normalize-space(.), 'No documents found.')]"
+      );
+
+
+// Document Category dropdown (second dropdown in the filter row)
+this.documentCategoryDropdown = By.css(
+  "select[ng-model='searchOptions.quickFilter'] ~ select"
 );
       
   }
-
-//   async waitForLoadingToFinish(timeout = 120000) {
-//     await this.driver.wait(
-//       async () => {
-//         return await this.driver.executeScript(() => {
-//           const selectors = [
-//             ".loading-spiner-holder.theme-loading-spiner-holder",
-//             ".loading",
-//             ".loader",
-//             ".spinner",
-//             ".loading-spinner",
-//             ".preloader",
-//           ];
-
-//           for (const selector of selectors) {
-//             for (const element of document.querySelectorAll(selector)) {
-//               const style = window.getComputedStyle(element);
-
-//               const visible =
-//                 style.display !== "none" &&
-//                 style.visibility !== "hidden" &&
-//                 style.opacity !== "0" &&
-//                 element.offsetWidth > 0 &&
-//                 element.offsetHeight > 0;
-
-//               if (visible) return false;
-//             }
-//           }
-
-//           return true;
-//         });
-//       },
-//       timeout,
-//       "Loading spinner did not disappear.",
-//     );
-    //   }
-    
-    // =========================================================
-// WAIT UNTIL THE PAGE FINISHES LOADING
-// =========================================================
 
 async waitForLoadingToFinish(timeout = 120000) {
     await this.driver.wait(async () => {
@@ -874,6 +840,253 @@ async getSectionTotal(sectionName) {
     return total;
 }
 
+    // =========================================================
+// DOCUMENT CATEGORY FILTER
+// =========================================================
+
+// async selectDocumentCategory(categoryName) {
+//   await this.waitForLoadingToFinish();
+
+//   // Actual Document Category dropdown from DevTools:
+//   // ng-model="searchOptions.quickFilter"
+//   // ng-change="applyFilter()"
+//   const categoryDropdown = By.css(
+//     "select[ng-model='searchOptions.quickFilter']"
+//   );
+
+//   const dropdown = await this.driver.wait(
+//     until.elementLocated(categoryDropdown),
+//     30000,
+//     "Document Category dropdown was not found."
+//   );
+
+//   await this.driver.wait(
+//     until.elementIsVisible(dropdown),
+//     15000,
+//     "Document Category dropdown is not visible."
+//   );
+
+//   await this.driver.executeScript(
+//     "arguments[0].scrollIntoView({block:'center'});",
+//     dropdown
+//   );
+
+//   const select = new Select(dropdown);
+
+//   // Verify that the requested category exists before selecting it.
+//   const options = await select.getOptions();
+//   const availableCategories = await Promise.all(
+//     options.map(async option => (await option.getText()).trim())
+//   );
+
+//   console.log("Available document categories:", availableCategories);
+
+//   if (!availableCategories.includes(categoryName)) {
+//     throw new Error(
+//       `Category "${categoryName}" not found. Available categories: ` +
+//       availableCategories.join(", ")
+//     );
+//   }
+
+//   await select.selectByVisibleText(categoryName);
+
+//   // Wait for Angular to apply the selected category and update totals.
+//   await this.waitForLoadingToFinish();
+
+//   await this.driver.wait(async () => {
+//     const selectedText = await select.getFirstSelectedOption()
+//       .then(option => option.getText())
+//       .catch(() => "");
+
+//     return selectedText.trim() === categoryName;
+//   }, 15000, `Category "${categoryName}" was not selected.`);
+
+//   // Allow the updated totals to render.
+//   await this.driver.sleep(1000);
+
+//   console.log(`✓ Selected Document Category: ${categoryName}`);
+    // }
+    
+    
+async selectDocumentCategory(categoryName) {
+    await this.waitForLoadingToFinish();
+
+    // Find the actual dropdown by its option labels.
+    const dropdowns = await this.driver.findElements(
+        By.css("select")
+    );
+
+    let categoryDropdown = null;
+    let availableCategories = [];
+
+    for (const dropdown of dropdowns) {
+        if (!(await dropdown.isDisplayed())) continue;
+
+        const select = new Select(dropdown);
+        const options = await select.getOptions();
+
+        const optionTexts = await Promise.all(
+            options.map(async option =>
+                (await option.getText()).trim()
+            )
+        );
+
+        if (optionTexts.includes("All Categories")) {
+            categoryDropdown = dropdown;
+            availableCategories = optionTexts;
+            break;
+        }
+    }
+
+    if (!categoryDropdown) {
+        throw new Error(
+            "Could not find the Document Category dropdown containing 'All Categories'."
+        );
+    }
+
+    console.log("Available document categories:", availableCategories);
+
+    if (!availableCategories.includes(categoryName)) {
+        throw new Error(
+            `Category "${categoryName}" was not found.`
+        );
+    }
+
+    await this.driver.executeScript(
+        "arguments[0].scrollIntoView({block:'center'});",
+        categoryDropdown
+    );
+
+    const categorySelect = new Select(categoryDropdown);
+
+    // Select the requested category.
+    await categorySelect.selectByVisibleText(categoryName);
+
+    // Verify the selection actually changed.
+    await this.driver.wait(async () => {
+        const selectedOption =
+            await categorySelect.getFirstSelectedOption();
+
+        const selectedText = (
+            await selectedOption.getText()
+        ).trim();
+
+        return selectedText === categoryName;
+    }, 10000, `Category "${categoryName}" was not selected.`);
+
+    console.log(`✓ Selected Document Category: ${categoryName}`);
+
+    // Wait for Angular to apply the category filter.
+    await this.waitForLoadingToFinish();
+
+    // Allow the total values to refresh after filtering.
+    await this.driver.wait(async () => {
+        const totalElements = await this.driver.findElements(
+            By.xpath(
+                "//div[@ng-show='dropOff != null']" +
+                "//strong[contains(@class,'ng-binding')]"
+            )
+        );
+
+        return totalElements.length > 0 &&
+            await totalElements[0].isDisplayed();
+    }, 30000, "DropOff Queue total did not become visible.");
+}
+
+
+async getSectionTotal(sectionName) {
+    const sectionConfig = {
+        "DropOff Queue": "dropOff",
+        "Courier": "courier",
+        "Completed": "completed"
+    };
+
+    const container = sectionConfig[sectionName];
+
+    if (!container) {
+        throw new Error(`Unknown section: ${sectionName}`);
+    }
+
+    const totalLocator = By.xpath(
+        `//div[@ng-show='${container} != null']` +
+        "//strong[contains(@class,'ng-binding')]"
+    );
+
+    const totalElement = await this.driver.wait(
+        until.elementLocated(totalLocator),
+        30000,
+        `${sectionName} total was not found.`
+    );
+
+    await this.driver.wait(
+        until.elementIsVisible(totalElement),
+        15000,
+        `${sectionName} total is not visible.`
+    );
+
+    const totalText = (await totalElement.getText())
+        .trim()
+        .replace(/,/g, "");
+
+    const total = Number(totalText);
+
+    if (!Number.isFinite(total)) {
+        throw new Error(
+            `Invalid ${sectionName} total: "${totalText}"`
+        );
+    }
+
+    return total;
+}
+
+
+
+// =========================================================
+// READ TOTAL FROM A PANEL
+// =========================================================
+
+async getDocumentCategoryPanelTotal(panelName) {
+  const panelSelectors = {
+    "DropOff Queue": "div[ng-show='dropOff != null']",
+    "Courier": "div.courier",
+    "Completed": "div.completed-docs"
+  };
+
+  const panelSelector = panelSelectors[panelName];
+
+  if (!panelSelector) {
+    throw new Error(`Unknown panel name: ${panelName}`);
+  }
+
+  const panel = await this.driver.wait(
+    until.elementLocated(By.css(panelSelector)),
+    30000,
+    `${panelName} panel was not found.`
+  );
+
+  await this.driver.wait(
+    until.elementIsVisible(panel),
+    15000,
+    `${panelName} panel is not visible.`
+  );
+
+  // Read the Total value specifically, not category-wise counts.
+  await this.driver.wait(async () => {
+    const text = await panel.getText();
+    return /Total:\s*[\d,]+/i.test(text);
+  }, 30000, `${panelName} Total count did not load.`);
+
+  const panelText = await panel.getText();
+  const match = panelText.match(/Total:\s*([\d,]+)/i);
+
+  if (!match) {
+    throw new Error(
+      `Could not read ${panelName} total. Panel text: ${panelText}`
+    );
+  }
+
+  return Number(match[1].replace(/,/g, ""));
+}
 
     
     
