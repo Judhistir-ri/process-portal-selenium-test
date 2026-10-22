@@ -791,54 +791,54 @@ async selectDocumentFilter(filterName) {
     await this.waitForLoadingToFinish();
 }
 
-async getSectionTotal(sectionName) {
-    const sectionConfig = {
-        "DropOff Queue": {
-            container: "dropOff"
-        },
-        "Courier": {
-            container: "courier"
-        },
-        "Completed": {
-            container: "completed"
-        }
-    };
+// async getSectionTotal(sectionName) {
+//     const sectionConfig = {
+//         "DropOff Queue": {
+//             container: "dropOff"
+//         },
+//         "Courier": {
+//             container: "courier"
+//         },
+//         "Completed": {
+//             container: "completed"
+//         }
+//     };
 
-    const config = sectionConfig[sectionName];
+//     const config = sectionConfig[sectionName];
 
-    if (!config) {
-        throw new Error(`Unknown DropOff section: ${sectionName}`);
-    }
+//     if (!config) {
+//         throw new Error(`Unknown DropOff section: ${sectionName}`);
+//     }
 
-    // These names match the ng-show sections shown in DevTools.
-    const totalLocator = By.xpath(
-        `//div[@ng-show='${config.container} != null']` +
-        "//strong[contains(@class,'ng-binding')][1]"
-    );
+//     // These names match the ng-show sections shown in DevTools.
+//     const totalLocator = By.xpath(
+//         `//div[@ng-show='${config.container} != null']` +
+//         "//strong[contains(@class,'ng-binding')][1]"
+//     );
 
-    const totalElement = await this.driver.wait(
-        until.elementLocated(totalLocator),
-        15000,
-        `${sectionName} total was not found.`
-    );
+//     const totalElement = await this.driver.wait(
+//         until.elementLocated(totalLocator),
+//         15000,
+//         `${sectionName} total was not found.`
+//     );
 
-    await this.driver.wait(
-        until.elementIsVisible(totalElement),
-        10000,
-        `${sectionName} total is not visible.`
-    );
+//     await this.driver.wait(
+//         until.elementIsVisible(totalElement),
+//         10000,
+//         `${sectionName} total is not visible.`
+//     );
 
-    const totalText = (await totalElement.getText()).trim();
-    const total = Number(totalText.replace(/,/g, ""));
+//     const totalText = (await totalElement.getText()).trim();
+//     const total = Number(totalText.replace(/,/g, ""));
 
-    if (!Number.isFinite(total)) {
-        throw new Error(
-            `Invalid total for ${sectionName}: "${totalText}"`
-        );
-    }
+//     if (!Number.isFinite(total)) {
+//         throw new Error(
+//             `Invalid total for ${sectionName}: "${totalText}"`
+//         );
+//     }
 
-    return total;
-}
+//     return total;
+// }
 
     // =========================================================
 // DOCUMENT CATEGORY FILTER
@@ -906,6 +906,53 @@ async getSectionTotal(sectionName) {
 
 //   console.log(`✓ Selected Document Category: ${categoryName}`);
     // }
+
+    async getSectionTotal(sectionName) {
+    const sectionSelectors = {
+        "DropOff Queue": "div[ng-show='dropOff != null']",
+        "Courier": "div.courier",
+        "Completed": "div.completed-docs"
+    };
+
+    const selector = sectionSelectors[sectionName];
+
+    if (!selector) {
+        throw new Error(`Unknown section: ${sectionName}`);
+    }
+
+    const section = await this.driver.wait(
+        until.elementLocated(By.css(selector)),
+        30000,
+        `${sectionName} panel was not found.`
+    );
+
+    await this.driver.wait(
+        until.elementIsVisible(section),
+        30000,
+        `${sectionName} panel is not visible.`
+    );
+
+    // Wait until the panel displays its Total count.
+    const total = await this.driver.wait(
+        async () => {
+            const panelText = await section.getText();
+
+            const match = panelText.match(/\bTotal\s*:\s*([\d,]+)/i);
+
+            if (!match) {
+                return null;
+            }
+
+            return Number(match[1].replace(/,/g, ""));
+        },
+        30000,
+        `${sectionName} Total count did not load.`
+    );
+
+    console.log(`${sectionName} Total: ${total}`);
+
+    return total;
+}
     
     
 async selectDocumentCategory(categoryName) {
@@ -1145,6 +1192,61 @@ async selectStopFilter(stopName) {
     await this.driver.sleep(1000);
     }
     
+    
+async selectDateFilter(date) {
+  // date should be in dd-mm-yyyy format, e.g. 14-10-2026.
+  const [day, month, year] = date.split("-");
+  const inputDate = `${year}-${month}-${day}`;
+
+  const dateInput = this.driver.findElement(
+    By.css("input[type='date'][ng-model='dateFilter']")
+  );
+
+  await this.driver.wait(
+    until.elementIsVisible(dateInput),
+    15000,
+    "Date filter input was not visible."
+  );
+
+  await this.driver.executeScript(
+    `
+      const input = arguments[0];
+      const dateValue = arguments[1];
+
+      input.value = dateValue;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    `,
+    dateInput,
+    inputDate
+  );
+
+  // Wait for the date filter to be applied and the panel totals to refresh.
+  await this.driver.wait(async () => {
+    const currentValue = await dateInput.getAttribute("value");
+    return currentValue === inputDate;
+  }, 10000, `Date filter was not set to ${date}.`);
+
+  await this.driver.sleep(2000);
+
+  console.log(`✓ Date filter applied: ${date}`);
+}
+
+async getDateFilteredDocumentCounts() {
+  const counts = {};
+
+  for (const section of [
+    "DropOff Queue",
+    "Courier",
+    "Completed"
+  ]) {
+    counts[section] =
+      await this.getDocumentCategoryPanelTotal(section);
+  }
+
+  return counts;
+}
+
     
 
 }

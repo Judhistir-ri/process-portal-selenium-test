@@ -435,7 +435,8 @@ it(
             "On Hold",
             "Not Notorized",
             "Nil Payment",
-            "Partial Payment"
+            "Partial Payment",
+            "All Documents"
         ];
 
         for (const documentType of documentTypes) {
@@ -566,7 +567,8 @@ it(
             "Visa",
             "Translation",
             "Dispatch",
-            "Notary"
+            "Notary",
+            "All Categories"
         ];
 
         for (const category of categories) {
@@ -632,7 +634,8 @@ it(
             "TRANSLATION",
             "NOTARY",
             "E-APP",
-            "Out Of States"
+            "Out Of States",
+             "Any Stop"
         ];
 
         for (const stopName of stops) {
@@ -674,5 +677,270 @@ it(
         console.log("\n✓ All Stop filters were tested.");
     }
 );
+
+    // ============================================================
+// TC_DROPOFF_012 - Verify Order ID search using Filter Anything
+// ============================================================
+
+// it(
+//   "TC_DROPOFF_012 - Verify Order IDs 263059 and 263061 in DropOff sections",
+//   async function () {
+//     this.timeout(180000);
+
+//     const orderIds = ["263059", "263061"];
+
+//     // Filter Anything search box.
+//     const searchBoxLocator = By.css(
+//       "input[placeholder='Filter Anything']"
+//     );
+
+//     // Wait until the DropOff page is ready.
+//     await driver.wait(
+//       until.elementLocated(searchBoxLocator),
+//       30000,
+//       "Filter Anything search box was not found."
+//     );
+
+//     const searchBox = await driver.findElement(searchBoxLocator);
+
+//     await driver.wait(
+//       until.elementIsVisible(searchBox),
+//       15000,
+//       "Filter Anything search box is not visible."
+//     );
+
+//     // Search both Order IDs in the same test case.
+//     for (const orderId of orderIds) {
+//       console.log(`\n========== Searching Order ID: ${orderId} ==========`);
+
+//       // Clear the previous search and enter the current Order ID.
+//       await searchBox.clear();
+//       await searchBox.sendKeys(orderId);
+
+//       // Wait until the UI updates and the Order ID is visible
+//       // in one of the three sections.
+//       const matchingSection = await driver.wait(
+//         async () => {
+//           const sections = [
+//             {
+//               name: "DropOff Queue",
+//               selector: "div.col-md-4.dropoff"
+//             },
+//             {
+//               name: "Courier",
+//               selector: "div.col-md-4.courier"
+//             },
+//             {
+//               name: "Completed",
+//               selector: "div.col-md-4.completed-docs"
+//             }
+//           ];
+
+//           for (const sectionInfo of sections) {
+//             const section = await driver.findElements(
+//               By.css(sectionInfo.selector)
+//             );
+
+//             if (section.length === 0) continue;
+
+//             const rows = await section[0].findElements(
+//               By.css("table.process-table tbody tr")
+//             );
+
+//             for (const row of rows) {
+//               try {
+//                 if (!(await row.isDisplayed())) continue;
+
+//                 const cells = await row.findElements(By.css("td"));
+
+//                 for (const cell of cells) {
+//                   const cellText = (await cell.getText()).trim();
+
+//                   if (cellText === orderId) {
+//                     return sectionInfo.name;
+//                   }
+//                 }
+//               } catch (error) {
+//                 // Ignore rows refreshed by Angular.
+//               }
+//             }
+//           }
+
+//           return false;
+//         },
+//         30000,
+//         `Order ID ${orderId} was not found in DropOff Queue, Courier, or Completed.`
+//       );
+
+//       console.log(
+//         `✓ Order ID ${orderId} found in section: ${matchingSection}`
+//       );
+
+//       expect(
+//         ["DropOff Queue", "Courier", "Completed"]
+//       ).to.include(matchingSection);
+//     }
+
+//     // Clear the search field after both searches.
+//     await searchBox.clear();
+
+//     console.log(
+//       "\n✓ Both Order IDs were searched and verified successfully."
+//     );
+//   }
+    // );
+    
+    // ============================================================
+// TC_DROPOFF_012 - Verify Order IDs using Filter Anything
+// ============================================================
+
+it(
+  "TC_DROPOFF_012 - Verify Order IDs 263059 and 263061 in DropOff sections",
+  async function () {
+    this.timeout(180000);
+
+    const orderIds = ["263059", "263061"];
+
+    const searchBoxLocator = By.css(
+      "input[placeholder='Filter Anything']"
+    );
+
+    const sections = [
+      {
+        name: "DropOff Queue",
+        selector: ".col-md-4:has(#dropTable)"
+      },
+      {
+        name: "Courier",
+        selector: ".col-md-4.courier"
+      },
+      {
+        name: "Completed",
+        selector: ".col-md-4.completed-docs"
+      }
+    ];
+
+    await driver.wait(
+      until.elementLocated(searchBoxLocator),
+      30000,
+      "Filter Anything search box was not found."
+    );
+
+    // Verify that the DropOff Queue table exists.
+    await driver.wait(
+      until.elementLocated(By.css("#dropTable")),
+      30000,
+      "DropOff Queue table was not found."
+    );
+
+    for (const orderId of orderIds) {
+      console.log(`\n========== Searching Order ID: ${orderId} ==========`);
+
+      const searchBox = await driver.findElement(searchBoxLocator);
+
+      await searchBox.clear();
+      await searchBox.sendKeys(orderId);
+
+      // Wait for the filtered results to update.
+      await driver.sleep(1500);
+
+      const matchingSections = await driver.wait(
+        async () => {
+          const matches = [];
+
+          for (const section of sections) {
+            const panels = await driver.findElements(
+              By.css(section.selector)
+            );
+
+            for (const panel of panels) {
+              if (!(await panel.isDisplayed())) continue;
+
+              const orderCells = await panel.findElements(
+                By.css("td.orderIdCol")
+              );
+
+              for (const cell of orderCells) {
+                const cellText = (await cell.getText()).trim();
+                const title = (await cell.getAttribute("title") || "").trim();
+
+                if (cellText === orderId || title === orderId) {
+                  matches.push(section.name);
+                  break;
+                }
+              }
+
+              if (matches.includes(section.name)) break;
+            }
+          }
+
+          return matches.length > 0 ? matches : null;
+        },
+        30000,
+        `Order ID ${orderId} was not found in DropOff Queue, Courier, or Completed.`
+      );
+
+      console.log(
+        `✓ Order ID ${orderId} found in: ${matchingSections.join(", ")}`
+      );
+
+      // Pass when the Order ID appears in at least one section.
+      expect(matchingSections.length).to.be.at.least(1);
+    }
+
+    // Clear the filter after both IDs have been tested.
+    const searchBox = await driver.findElement(searchBoxLocator);
+    await searchBox.clear();
+
+    console.log("\n✓ Both Order IDs were found in at least one section.");
+  }
+    );
+    
+    // ============================================================
+// TC_DROPOFF_013 - Verify section totals after selecting a date
+// ============================================================
+
+it(
+    "TC_DROPOFF_013 - Verify document counts for 14-10-2026",
+    async function () {
+        this.timeout(180000);
+
+        const selectedDate = "14-10-2026";
+
+        console.log(
+            `\n========== Date Filter: ${selectedDate} ==========`
+        );
+
+        // Select the date and apply the filter.
+        await dropOffDetail.selectDateFilter(selectedDate);
+
+        // Read the count from each of the three panels.
+        const queueTotal =
+            await dropOffDetail.getSectionTotal("DropOff Queue");
+
+        const courierTotal =
+            await dropOffDetail.getSectionTotal("Courier");
+
+        const completedTotal =
+            await dropOffDetail.getSectionTotal("Completed");
+
+        // Display the results.
+        console.log("\n========== Date Filter Results ==========");
+        console.log(`Selected Date: ${selectedDate}`);
+        console.log(`DropOff Queue Total: ${queueTotal}`);
+        console.log(`Courier Total: ${courierTotal}`);
+        console.log(`Completed Total: ${completedTotal}`);
+
+        // Validate all three totals.
+        expect(queueTotal).to.be.a("number").and.at.least(0);
+        expect(courierTotal).to.be.a("number").and.at.least(0);
+        expect(completedTotal).to.be.a("number").and.at.least(0);
+
+        console.log(
+            "\n✓ Successfully read all three section totals for the selected date."
+        );
+    }
+);
+
     
 });
