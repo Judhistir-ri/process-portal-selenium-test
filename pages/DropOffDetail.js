@@ -1247,6 +1247,235 @@ async getDateFilteredDocumentCounts() {
   return counts;
 }
 
+    getDropOffPanel() {
+    return By.xpath(
+        "//table[@id='dropTable']/ancestor::div[contains(@class,'col-md-4')][1]"
+    );
+}
+
+// Get the Courier panel.
+getCourierPanel() {
+    return By.css("div.col-md-4.courier");
+}
+
+async waitForOrderInPanel(panelLocator, orderId, timeout = 15000) {
+    const rowLocator = By.xpath(
+        `${this.xpathForElement(panelLocator)}` +
+        `//tr[.//*[normalize-space()='${orderId}']]`
+    );
+
+    return await this.driver.wait(
+        until.elementLocated(rowLocator),
+        timeout,
+        `Order ${orderId} was not found in the requested panel`
+    );
+}
+
+// Converts a panel locator into an XPath string for use in a row locator.
+xpathForElement(panelLocator) {
+    return panelLocator.value;
+}
+
+// async searchOrderId(orderId) {
+//     const searchBox = await this.driver.wait(
+//         until.elementLocated(
+//             By.css("input[placeholder='Filter Anything']")
+//         ),
+//         15000
+//     );
+
+//     await searchBox.clear();
+//     await searchBox.sendKeys(String(orderId));
+
+//     await this.driver.sleep(1000);
+    // }
+    
+    // Search an Order ID using Filter Anything.
+async searchOrderId(orderId) {
+    const searchBoxLocator = By.css(
+        "input[placeholder='Filter Anything']"
+    );
+
+    const searchBox = await this.driver.wait(
+        until.elementLocated(searchBoxLocator),
+        30000,
+        "Filter Anything search box was not found."
+    );
+
+    await this.driver.wait(
+        until.elementIsVisible(searchBox),
+        15000,
+        "Filter Anything search box is not visible."
+    );
+
+    await searchBox.clear();
+    await searchBox.sendKeys(String(orderId));
+
+    // Wait for Angular to update the filtered results.
+    await this.driver.wait(async () => {
+        const value = await searchBox.getAttribute("value");
+        return value === String(orderId);
+    }, 10000, "Order ID was not entered into Filter Anything.");
+
+    await this.driver.sleep(2000);
+}
+
+async selectOrderCheckbox(panelLocator, orderId) {
+    const panel = await this.driver.wait(
+        until.elementLocated(panelLocator),
+        15000
+    );
+
+    const row = await panel.findElement(
+        By.xpath(`.//tr[.//*[normalize-space()='${orderId}']]`)
+    );
+
+    const checkbox = await row.findElement(
+        By.css("input[type='checkbox']")
+    );
+
+    await this.driver.executeScript(
+        "arguments[0].scrollIntoView({block:'center'});",
+        checkbox
+    );
+
+    if (!(await checkbox.isSelected())) {
+        await checkbox.click();
+    }
+}
+
+async clickPanelButton(panelLocator, buttonText) {
+    const panel = await this.driver.wait(
+        until.elementLocated(panelLocator),
+        15000,
+        `Panel for ${buttonText} button was not found.`
+    );
+
+    // Match button text even when it contains an arrow icon.
+    const buttonLocator = By.xpath(
+        `.//button[contains(normalize-space(.), '${buttonText}')]`
+    );
+
+    const button = await panel.findElement(buttonLocator);
+
+    await this.driver.wait(
+        until.elementIsVisible(button),
+        10000,
+        `${buttonText} button is not visible.`
+    );
+
+    await this.driver.wait(
+        until.elementIsEnabled(button),
+        10000,
+        `${buttonText} button is not enabled.`
+    );
+
+    await this.driver.executeScript(
+        "arguments[0].scrollIntoView({block:'center'});",
+        button
+    );
+
+    await button.click();
+
+    // Wait for the application to finish the operation.
+    await this.waitForLoadingToFinish(60000);
+}
+
+async isOrderInPanel(panelLocator, orderId) {
+    try {
+        const panel = await this.driver.findElement(panelLocator);
+
+        return await this.driver.executeScript(
+            (panelElement, id) => {
+                const rows = panelElement.querySelectorAll("tr");
+
+                return Array.from(rows).some(row => {
+                    const cells = row.querySelectorAll("td");
+
+                    return Array.from(cells).some(cell => {
+                        const text = (cell.innerText || "").trim();
+                        const title = (cell.getAttribute("title") || "").trim();
+
+                        return text === id || title === id;
+                    });
+                });
+            },
+            panel,
+            String(orderId)
+        );
+    } catch (error) {
+        return false;
+    }
+}
+
+async waitForOrderInPanelWithRefresh(
+    panelLocator,
+    orderId,
+    waitSeconds = 5
+) {
+    // First wait for the application to update.
+    await this.driver.sleep(waitSeconds * 1000);
+    await this.waitForLoadingToFinish(60000);
+
+    if (await this.isOrderInPanel(panelLocator, orderId)) {
+        return true;
+    }
+
+    console.log(
+        `Order ${orderId} not visible yet. Clicking Refresh...`
+    );
+
+    const refreshButton = await this.driver.wait(
+        until.elementLocated(
+            By.css("button[ng-click='refresh()']")
+        ),
+        15000,
+        "Refresh button was not found."
+    );
+
+    await this.driver.wait(
+        until.elementIsVisible(refreshButton),
+        10000
+    );
+
+    await this.driver.wait(
+        until.elementIsEnabled(refreshButton),
+        10000
+    );
+
+    await refreshButton.click();
+
+    // Wait for the refresh and updated results.
+    await this.waitForLoadingToFinish(60000);
+    await this.driver.sleep(waitSeconds * 1000);
+
+    return await this.isOrderInPanel(panelLocator, orderId);
+    }
+    
+    
+async waitForOrderToLeavePanel(
+    panelLocator,
+    orderId,
+    timeout = 15000
+) {
+    try {
+        await this.driver.wait(
+            async () => {
+                return !(await this.isOrderInPanel(
+                    panelLocator,
+                    orderId
+                ));
+            },
+            timeout,
+            `Order ${orderId} did not leave the panel within ${timeout}ms.`
+        );
+
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
     
 
 }
