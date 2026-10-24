@@ -207,4 +207,163 @@ describe("Pickup Page - Export and Print Docs Functional Tests", function () {
             "Completed Print Docs"
         );
     });
+
+it("TC_PICKUP_005 - Verify Pickup Queue and Completed totals for each document filter", async function () {
+
+    const documentTypes = [
+        "All Documents",
+        "Rush",
+        "Payment Requested",
+        "Open Notifications",
+        "Response Awaited",
+        "On Hold",
+        "Not Notorized",
+        "Nil Payment",
+        "Partial Payment",
+        "All Documents"
+    ];
+
+    for (const documentType of documentTypes) {
+
+        console.log(
+            `\n========== Testing document filter: ${documentType} ==========`
+        );
+
+        // Step 1: Select the document filter
+        await pickupPage.selectDocumentFilter(documentType);
+
+        console.log(`✓ Selected Pickup document filter: ${documentType}`);
+
+        // Step 2: Wait for the page to finish loading
+        await pickupPage.waitForLoadingToFinish();
+
+        // Step 3: Read Pickup Queue total
+        const pickupQueueTotal =
+            await pickupPage.getSectionTotal("Pickup Queue");
+
+        console.log(`✓ Pickup Queue Total: ${pickupQueueTotal}`);
+
+        // Step 4: Read Completed total
+        const completedTotal =
+            await pickupPage.getSectionTotal("Completed");
+
+        console.log(`✓ Completed Total: ${completedTotal}`);
+
+        // Step 5: Verify both totals are available
+        if (pickupQueueTotal === null || pickupQueueTotal === undefined) {
+            throw new Error(
+                `Pickup Queue total was not available for filter "${documentType}".`
+            );
+        }
+
+        if (completedTotal === null || completedTotal === undefined) {
+            throw new Error(
+                `Completed total was not available for filter "${documentType}".`
+            );
+        }
+
+        // Step 6: Verify totals are valid non-negative numbers
+        const pickupTotalNumber = Number(
+            String(pickupQueueTotal).replace(/,/g, "")
+        );
+
+        const completedTotalNumber = Number(
+            String(completedTotal).replace(/,/g, "")
+        );
+
+        if (
+            !Number.isFinite(pickupTotalNumber) ||
+            pickupTotalNumber < 0
+        ) {
+            throw new Error(
+                `Invalid Pickup Queue total "${pickupQueueTotal}" for filter "${documentType}".`
+            );
+        }
+
+        if (
+            !Number.isFinite(completedTotalNumber) ||
+            completedTotalNumber < 0
+        ) {
+            throw new Error(
+                `Invalid Completed total "${completedTotal}" for filter "${documentType}".`
+            );
+        }
+
+        console.log(
+            `✓ TC passed for filter "${documentType}": ` +
+            `Pickup Queue = ${pickupTotalNumber}, ` +
+            `Completed = ${completedTotalNumber}`
+        );
+    }
+
+    console.log(
+        "\n✓ TC_PICKUP_005 completed for all document filters."
+    );
+});
+    
+    
+// ============================================================
+// TC_PICKUP_006 - Verify totals for each Document Category
+// ============================================================
+
+it(
+  "TC_PICKUP_006 - Verify Pickup Queue and Completed totals for each document category",
+  async function () {
+    this.timeout(300000);
+
+    const documentCategories = [
+      "All Categories",
+      "Shipping",
+      "Federal Government",
+      "General",
+      "International",
+      "Visa",
+      "Translation",
+      "Dispatch",
+        "Notary",
+      "All Categories"
+    ];
+
+    for (const category of documentCategories) {
+      console.log(
+        `\n========== Document Category: ${category} ==========`
+      );
+
+      // 1. Select the category.
+      await pickupPage.selectDocumentCategory(category);
+
+      // 2. Wait for the page to finish updating.
+      await pickupPage.waitForLoadingToFinish();
+
+      // 3. Read the totals from the two panels.
+      const pickupQueueTotal =
+        await pickupPage.getSectionTotal("Pickup Queue");
+
+      const completedTotal =
+        await pickupPage.getSectionTotal("Completed");
+
+      // 4. Print the results.
+      console.log(`Category: ${category}`);
+      console.log(`Pickup Queue Total: ${pickupQueueTotal}`);
+      console.log(`Completed Total: ${completedTotal}`);
+
+      // 5. Validate both totals.
+      expect(
+        pickupQueueTotal,
+        `${category}: invalid Pickup Queue total`
+      ).to.be.a("number").and.at.least(0);
+
+      expect(
+        completedTotal,
+        `${category}: invalid Completed total`
+      ).to.be.a("number").and.at.least(0);
+    }
+
+    console.log(
+      "\n✓ Verified Pickup Queue and Completed totals for every document category."
+    );
+  }
+);
+
+
 });
