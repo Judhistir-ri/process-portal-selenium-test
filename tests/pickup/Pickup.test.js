@@ -410,7 +410,184 @@ it(
             expect(completedTotal).to.be.a("number").and.at.least(0);
         }
     }
+    );
+    
+    
+it(
+  "TC_PICKUP_008 - Search Order IDs using Filter Anything and verify Order ID, Doc ID, and Country",
+  async function () {
+    this.timeout(180000);
+
+    const orderIds = ["263029", "262950"];
+
+    const searchBoxLocator = By.css(
+      "input[placeholder='Filter Anything']"
+    );
+
+    await driver.wait(
+      until.elementLocated(searchBoxLocator),
+      30000,
+      "Filter Anything search box was not found."
+    );
+
+    const searchBox = await driver.findElement(searchBoxLocator);
+
+    const sections = [
+      {
+        name: "Pickup Queue",
+        selector: "div.col-md-6.pickup"
+      },
+      {
+        name: "Completed",
+        selector: "div.col-md-6.completed-docs"
+      }
+    ];
+
+    async function findOrderInSections(orderId) {
+      for (const sectionInfo of sections) {
+        const sectionElements = await driver.findElements(
+          By.css(sectionInfo.selector)
+        );
+
+        if (!sectionElements.length) continue;
+
+        const section = sectionElements[0];
+
+        const rows = await section.findElements(
+          By.css("table.process-table tbody tr")
+        );
+
+        const headers = await section.findElements(
+          By.css("table.process-table thead th")
+        );
+
+        const headerTexts = [];
+
+        for (const header of headers) {
+          headerTexts.push(
+            (await header.getText())
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, " ")
+          );
+        }
+
+        for (const row of rows) {
+          const cells = await row.findElements(By.css("td"));
+          const cellTexts = [];
+
+          for (const cell of cells) {
+            cellTexts.push((await cell.getText()).trim());
+          }
+
+          if (!cellTexts.includes(orderId)) continue;
+
+          function getColumnValue(headerName) {
+            const index = headerTexts.findIndex(
+              (header) => header === headerName.toLowerCase()
+            );
+
+            return index >= 0 ? (cellTexts[index] || "").trim() : "";
+          }
+
+          return {
+            orderId,
+            docId: getColumnValue("Doc ID"),
+            country: getColumnValue("Country"),
+            section: sectionInfo.name,
+            rowText: cellTexts.join(" | ")
+          };
+        }
+      }
+
+      return null;
+    }
+
+    for (const orderId of orderIds) {
+      console.log(`\n========== Pickup Search: ${orderId} ==========`);
+
+      await searchBox.clear();
+      await searchBox.sendKeys(orderId);
+
+      // Wait until the order appears in either Pickup Queue or Completed.
+      const result = await driver.wait(
+        async () => await findOrderInSections(orderId),
+        30000,
+        `Order ID ${orderId} was not found in Pickup Queue or Completed.`
+      );
+
+      expect(result).to.exist;
+      expect(result.orderId).to.equal(orderId);
+
+      console.log("----------------------------------------");
+      console.log(`Order ID : ${result.orderId}`);
+      console.log(`Doc ID   : ${result.docId || "Not found"}`);
+      console.log(`Country  : ${result.country || "Not found"}`);
+      console.log(`Section  : ${result.section}`);
+      console.log(`Row data : ${result.rowText}`);
+      console.log("----------------------------------------");
+
+      expect(
+        result.docId,
+        `Doc ID should be available for Order ID ${orderId}`
+      ).to.not.equal("");
+
+      expect(
+        result.country,
+        `Country should be available for Order ID ${orderId}`
+      ).to.not.equal("");
+    }
+
+    console.log(
+      "\n✓ Both Order IDs were searched and verified on the Pickup page."
+    );
+  }
 );
+
+    it("TC_PICKUP_009 - Verify document counts for 14-10-2026", async function () {
+        const selectedDate = "2026-10-14";
+
+        try {
+            console.log(
+                "\n========== Pickup Date Filter Test =========="
+            );
+
+            // Step 1: Select 14 October 2026.
+            await pickupPage.selectDateFilter(selectedDate);
+
+            // Step 2: Read Pickup Queue count.
+            const pickupQueueCount =
+                await pickupPage.getSectionTotal("Pickup Queue");
+
+            // Step 3: Read Completed count.
+            const completedCount =
+                await pickupPage.getSectionTotal("Completed");
+
+            // Step 4: Print the results.
+            console.log("------------------------------------");
+            console.log("Selected Date: 14-10-2026");
+            console.log(`Pickup Queue Documents: ${pickupQueueCount}`);
+            console.log(`Completed Documents: ${completedCount}`);
+            console.log(
+                `Total Across Both Panels: ${
+                    pickupQueueCount + completedCount
+                }`
+            );
+            console.log("------------------------------------");
+
+            // Step 5: Validate the counts.
+            expect(pickupQueueCount).to.be.a("number");
+            expect(pickupQueueCount).to.be.at.least(0);
+
+            expect(completedCount).to.be.a("number");
+            expect(completedCount).to.be.at.least(0);
+
+        } finally {
+            // Step 6: Always clear the date filter,
+            // even if an assertion or another step fails.
+            await pickupPage.clearDateFilter();
+        }
+    });
 
 
 

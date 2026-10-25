@@ -639,6 +639,93 @@ async selectStopFilter(stopName) {
     await this.driver.sleep(1000);
 }
 
+    
+    // ======================================================
+    // SELECT DATE FILTER
+    // ======================================================
+    async selectDateFilter(date) {
+        const dateInputLocator = By.css(
+            "input[type='date'][ng-model='dateFilter']"
+        );
+
+        const dateInput = await this.driver.wait(
+            until.elementLocated(dateInputLocator),
+            10000,
+            "Pickup date filter was not found."
+        );
+
+        await this.driver.wait(
+            until.elementIsVisible(dateInput),
+            5000,
+            "Pickup date filter is not visible."
+        );
+
+        // Scroll to the date input.
+        await this.driver.executeScript(
+            "arguments[0].scrollIntoView({block:'center'});",
+            dateInput
+        );
+
+        // Set the date in the native date input.
+        // Expected format: YYYY-MM-DD
+        await this.driver.executeScript(
+            (element, value) => {
+                element.value = value;
+                element.dispatchEvent(
+                    new Event("input", { bubbles: true })
+                );
+                element.dispatchEvent(
+                    new Event("change", { bubbles: true })
+                );
+            },
+            dateInput,
+            date
+        );
+
+        // Wait until Angular applies the date filter.
+        await this.driver.wait(
+            async () => {
+                const currentValue = await dateInput.getAttribute("value");
+                return currentValue === date;
+            },
+            5000,
+            `Date filter was not set to ${date}.`
+        );
+
+        await this.waitForLoadingToFinish();
+
+        console.log(`✓ Selected Pickup date: ${date}`);
+    }
+
+    // ======================================================
+    // CLEAR DATE FILTER
+    // ======================================================
+    async clearDateFilter() {
+        const dateInputLocator = By.css(
+            "input[type='date'][ng-model='dateFilter']"
+        );
+
+        const dateInput = await this.driver.wait(
+            until.elementLocated(dateInputLocator),
+            10000,
+            "Pickup date filter was not found."
+        );
+
+        await this.driver.executeScript(element => {
+            element.value = "";
+            element.dispatchEvent(
+                new Event("input", { bubbles: true })
+            );
+            element.dispatchEvent(
+                new Event("change", { bubbles: true })
+            );
+        }, dateInput);
+
+        await this.waitForLoadingToFinish();
+
+        console.log("✓ Cleared Pickup date filter.");
+    }
+
 
 
 
