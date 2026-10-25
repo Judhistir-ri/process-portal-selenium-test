@@ -363,7 +363,55 @@ it(
       "\n✓ Verified Pickup Queue and Completed totals for every document category."
     );
   }
+    );
+    
+it(
+    "TC_PICKUP_007 - Verify Pickup Queue and Completed totals for each Stop",
+    async function () {
+        this.timeout(600000);
+
+        const stops = [
+            "Any Stop",
+            "CC",
+            "SOS",
+            "DOS",
+            "EMB1",
+            "DC EMB",
+            "ARAB CHAMBER",
+            "AGSHF",
+            "MCCC",
+            "USQBC",
+            "INT-EMB",
+            "DISPATCH",
+            "VISA",
+            "TRANSLATION",
+            "NOTARY",
+            "E-APP",
+            "Out Of States",
+            "Any Stop"
+        ];
+
+        for (const stopName of stops) {
+            console.log(
+                `\n========== Testing Pickup Stop: ${stopName} ==========`
+            );
+
+            await pickupPage.selectStopFilter(stopName);
+
+            const pickupTotal = await pickupPage.getPickupQueueTotal();
+            const completedTotal = await pickupPage.getCompletedTotal();
+
+            console.log(
+                `${stopName} | Pickup Queue: ${pickupTotal} | ` +
+                `Completed: ${completedTotal}`
+            );
+
+            expect(pickupTotal).to.be.a("number").and.at.least(0);
+            expect(completedTotal).to.be.a("number").and.at.least(0);
+        }
+    }
 );
+
 
 
 });

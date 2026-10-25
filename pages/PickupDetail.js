@@ -520,65 +520,125 @@ async selectDocumentCategory(category) {
   await driver.sleep(1000);
 
   return matchedText;
-    }
+    }  
     
-    async getPickupQueueTotal() {
-  const totalLocator = By.xpath(
-    "//div[contains(@class,'pickup-docs')]" +
-    "//div[@ng-show=\"pickupQueue != null\"]" +
-    "//strong[contains(normalize-space(.),'Total:')]" +
-    "/following-sibling::strong[1]"
-  );
-
-  const element = await this.driver.wait(
-    until.elementLocated(totalLocator),
-    15000,
-    "Pickup Queue total count was not found."
-  );
-
-  await this.driver.wait(
-    until.elementIsVisible(element),
-    10000,
-    "Pickup Queue total count is not visible."
-  );
-
-  const total = (await element.getText()).trim();
-
-  if (!/^\d+$/.test(total)) {
-    throw new Error(`Invalid Pickup Queue total: "${total}"`);
-  }
-
-  return Number(total);
+async getPickupQueueTotal() {
+    return await this.getSectionTotal("Pickup Queue");
 }
 
 async getCompletedTotal() {
-  const totalLocator = By.xpath(
-    "//div[contains(@class,'completed-docs')]" +
-    "//div[@ng-show=\"completed != null\"]" +
-    "//strong[contains(normalize-space(.),'Total:')]" +
-    "/following-sibling::strong[1]"
-  );
-
-  const element = await this.driver.wait(
-    until.elementLocated(totalLocator),
-    15000,
-    "Completed total count was not found."
-  );
-
-  await this.driver.wait(
-    until.elementIsVisible(element),
-    10000,
-    "Completed total count is not visible."
-  );
-
-  const total = (await element.getText()).trim();
-
-  if (!/^\d+$/.test(total)) {
-    throw new Error(`Invalid Completed total: "${total}"`);
-  }
-
-  return Number(total);
+    return await this.getSectionTotal("Completed");
 }
+
+
+async selectStopFilter(stopName) {
+    await this.waitForLoadingToFinish(120000);
+
+    const locator = By.css(
+        "select[ng-model='searchOptions.stopFilter']"
+    );
+
+    // Find the visible Stop dropdown.
+    const dropdown = await this.driver.wait(
+        async () => {
+            const elements = await this.driver.findElements(locator);
+
+            for (const element of elements) {
+                try {
+                    if (
+                        await element.isDisplayed() &&
+                        await element.isEnabled()
+                    ) {
+                        return element;
+                    }
+                } catch (_) {
+                    // Element may be refreshed by Angular.
+                }
+            }
+
+            return false;
+        },
+        30000,
+        "Visible Pickup Stop dropdown was not found."
+    );
+
+    await this.driver.executeScript(
+        "arguments[0].scrollIntoView({block:'center'});",
+        dropdown
+    );
+
+    const select = new Select(dropdown);
+
+    // Wait for Angular to populate the real Stop options.
+    await this.driver.wait(
+        async () => {
+            try {
+                const options = await select.getOptions();
+
+                for (const option of options) {
+                    const text = (await option.getText()).trim();
+
+                    if (text === "Any Stop") {
+                        return true;
+                    }
+                }
+
+                return false;
+            } catch (_) {
+                return false;
+            }
+        },
+        30000,
+        "Pickup Stop options did not load. Check the dropdown HTML."
+    );
+
+    // Read and log the actual option labels and values.
+    const options = await select.getOptions();
+    const availableStops = [];
+
+    for (const option of options) {
+        availableStops.push({
+            text: (await option.getText()).trim(),
+            value: await option.getAttribute("value")
+        });
+    }
+
+    console.log("Pickup Stop options:", availableStops);
+
+    // Select by visible text only after options have loaded.
+    const matchingOption = availableStops.find(
+        option => option.text === stopName
+    );
+
+    if (!matchingOption) {
+        throw new Error(
+            `Stop "${stopName}" was not found. Available stops: ` +
+            availableStops.map(option => option.text).join(", ")
+        );
+    }
+
+    await select.selectByVisibleText(stopName);
+
+    // Verify the selected option.
+    await this.driver.wait(
+        async () => {
+            try {
+                const selected = await select.getFirstSelectedOption();
+                return (await selected.getText()).trim() === stopName;
+            } catch (_) {
+                return false;
+            }
+        },
+        10000,
+        `Pickup Stop "${stopName}" was not selected successfully.`
+    );
+
+    console.log(`✓ Selected Pickup Stop: ${stopName}`);
+
+    await this.waitForLoadingToFinish(120000);
+    await this.driver.sleep(1000);
+}
+
 
 
 
