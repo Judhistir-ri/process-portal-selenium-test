@@ -1,6 +1,6 @@
 
 const { expect } = require("chai");
-const { By, until } = require("selenium-webdriver");
+const { By, until, Key } = require("selenium-webdriver");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
@@ -589,6 +589,171 @@ it(
         }
     });
 
+// ============================================================
+// TC_PICKUP_010 - Search multiple DocIDs using Search (Barcode)
+// ============================================================
+
+// it(
+//     "TC_PICKUP_010 - Search DocIDs 99575 and 99714 and verify selected checkbox",
+//     async function () {
+//         this.timeout(120000);
+
+//         const docIds = ["99575", "99714"];
+
+//         const searchBarcodeLocator = By.css(
+//             "input[ng-model='searchOptions.searchKeyword']"
+//         );
+
+//         const panels = [
+//             {
+//                 name: "Pickup Queue",
+//                 locator: By.css("div.col-md-6.pickup")
+//             },
+//             {
+//                 name: "Completed",
+//                 locator: By.css("div.col-md-6.completed-docs")
+//             }
+//         ];
+
+//         // Use the existing driver variable from your test setup.
+//         // Do not declare: const driver = this.driver;
+
+//         for (const docId of docIds) {
+//             console.log(
+//                 `\n========== Search Barcode: DocID ${docId} ==========`
+//             );
+
+//             // Step 1: Find the Search (Barcode) input.
+//             const searchBox = await driver.wait(
+//                 until.elementLocated(searchBarcodeLocator),
+//                 15000,
+//                 "Search (Barcode) input was not found."
+//             );
+
+//             await driver.wait(
+//                 until.elementIsVisible(searchBox),
+//                 10000,
+//                 "Search (Barcode) input is not visible."
+//             );
+
+//             // Step 2: Search for the current DocID.
+//             await searchBox.clear();
+//             await searchBox.sendKeys(docId);
+
+//             // Wait until the input contains the DocID.
+//             await driver.wait(
+//                 async () =>
+//                     (await searchBox.getAttribute("value")).trim() === docId,
+//                 5000,
+//                 `Search field did not contain DocID ${docId}.`
+//             );
+
+//             // Allow Angular's ng-change barcode search to update the table.
+//             await driver.sleep(1500);
+
+//             // Step 3: Search Pickup Queue first, then Completed.
+//             let matchedRecord = null;
+
+//             for (const panelInfo of panels) {
+//                 const panelElements = await driver.findElements(
+//                     panelInfo.locator
+//                 );
+
+//                 if (panelElements.length === 0) {
+//                     continue;
+//                 }
+
+//                 const panel = panelElements[0];
+
+//                 const rows = await panel.findElements(
+//                     By.css("table.process-table tbody tr")
+//                 );
+
+//                 for (const row of rows) {
+//                     const cells = await row.findElements(By.css("td"));
+//                     const cellTexts = [];
+
+//                     for (const cell of cells) {
+//                         cellTexts.push((await cell.getText()).trim());
+//                     }
+
+//                     // Match the complete DocID cell, not a partial value.
+//                     const docIdIndex = cellTexts.findIndex(
+//                         text => text === docId
+//                     );
+
+//                     if (docIdIndex === -1) {
+//                         continue;
+//                     }
+
+//                     // Capture the Order ID from the same row.
+//                     const orderIdCell = await row.findElements(
+//                         By.css("td[ng-class*='getClass']")
+//                     );
+
+//                     const checkbox = await row.findElements(
+//                         By.css("input[type='checkbox']")
+//                     );
+
+//                     if (checkbox.length === 0) {
+//                         throw new Error(
+//                             `Checkbox not found for DocID ${docId} ` +
+//                             `in ${panelInfo.name}.`
+//                         );
+//                     }
+
+//                     matchedRecord = {
+//                         panel: panelInfo.name,
+//                         docId,
+//                         orderId: orderIdCell.length
+//                             ? (await orderIdCell[0].getText()).trim()
+//                             : "Not captured",
+//                         isSelected: await checkbox[0].isSelected()
+//                     };
+
+//                     break;
+//                 }
+
+//                 if (matchedRecord) {
+//                     break;
+//                 }
+//             }
+
+//             // Step 4: Verify the DocID was found in either panel.
+//             expect(
+//                 matchedRecord,
+//                 `DocID ${docId} was not found in Pickup Queue or Completed.`
+//             ).to.not.equal(null);
+
+//             console.log(`Panel: ${matchedRecord.panel}`);
+//             console.log(`Order ID: ${matchedRecord.orderId}`);
+//             console.log(`DocID: ${matchedRecord.docId}`);
+//             console.log(
+//                 `Checkbox selected: ${matchedRecord.isSelected}`
+//             );
+
+//             // Step 5: Verify the exact DocID and selected checkbox.
+//             expect(matchedRecord.docId).to.equal(docId);
+
+//             expect(
+//                 matchedRecord.isSelected,
+//                 `Checkbox for DocID ${docId} should be selected.`
+//             ).to.equal(true);
+
+//             console.log(
+//                 `✓ DocID ${docId} found and checkbox verified successfully.`
+//             );
+
+//             // Step 6: Clear the search before searching the next DocID.
+//             await searchBox.clear();
+//             await driver.sleep(1000);
+//         }
+
+//         console.log(
+//             "\n✓ TC_PICKUP_010 passed: Both DocIDs were verified."
+//         );
+//     }
+// );
 
 
 });
