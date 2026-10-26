@@ -3986,136 +3986,140 @@ async setMarkPaymentPopupAmount(amount) {
   async getFeeTableTotalAmount() {
     return await this.getPaymentAmount();
   }
-
-  // Edit a fee row and enter a new unit price.
-
   
-// async editFeeAmount(feeType, newAmount) {
-//   const row = await this.getFeeRow(feeType);
+  
+  // async editFeeAmount(/* keep your existing parameters here */) {
+  //   await this.waitForLoadingSpinnerToDisappear();
 
-//   // Step 1: Click the Edit icon.
-//   const editIcon = await row.findElement(
-//     By.css("i[ng-click*='editFee']")
-//   );
+  //   // Do not click through a modal left open by an earlier test.
+  //   const visibleModals = await this.driver.findElements(
+  //     By.css(".modal.in")
+  //   );
 
-//   await this.driver.executeScript(
-//     "arguments[0].scrollIntoView({block:'center'});",
-//     editIcon
-//   );
+  //   for (const modal of visibleModals) {
+  //     if (await modal.isDisplayed()) {
+  //       throw new Error(
+  //         "A modal is still open. Close it before editing the fee."
+  //       );
+  //     }
+  //   }
 
-//   await editIcon.click();
+  //   const editFeeIcon = await this.waitForVisible(
+  //     By.css(
+  //       "#docDetails i[title='Edit Fee']"
+  //     ),
+  //     15000
+  //   );
 
-//   // Step 2: Find the editable fee amount input.
-//   const input = await this.driver.wait(async () => {
-//     const inputs = await row.findElements(
-//       By.css("input[ng-model='paymentDetail.feeAmount']")
-//     );
+  //   await this.driver.executeScript(
+  //     "arguments[0].scrollIntoView({block:'center'});",
+  //     editFeeIcon
+  //   );
 
-//     for (const element of inputs) {
-//       if (await element.isDisplayed()) {
-//         return element;
-//       }
-//     }
+  //   await this.waitForLoadingSpinnerToDisappear();
+  //   await editFeeIcon.click();
 
-//     return false;
-//   }, 10000, `Editable amount input not found for "${feeType}".`);
-
-//   // Step 3: Change the unit price.
-//   await input.clear();
-//   await input.sendKeys(String(newAmount));
-//   await input.sendKeys("\uE004"); // TAB
-
-//   await this.driver.wait(async () => {
-//     try {
-//       return Number(await input.getAttribute("value")) === Number(newAmount);
-//     } catch (_) {
-//       return false;
-//     }
-//   }, 5000, "Updated fee amount was not entered correctly.");
-
-//   // Step 4: Click the green checkmark to commit the edited fee.
-//   const confirmEdit = await row.findElement(
-//     By.css("i[ng-click*='addEditedFee']")
-//   );
-
-//   await this.driver.executeScript(
-//     "arguments[0].scrollIntoView({block:'center'});",
-//     confirmEdit
-//   );
-
-//   try {
-//     await confirmEdit.click();
-//   } catch (_) {
-//     await this.driver.executeScript(
-//       "arguments[0].click();",
-//       confirmEdit
-//     );
-//   }
-
-//   // Step 5: Wait until edit mode closes.
-//   await this.driver.wait(async () => {
-//     try {
-//       const inputs = await row.findElements(
-//         By.css("input[ng-model='paymentDetail.feeAmount']")
-//       );
-
-//       for (const element of inputs) {
-//         if (await element.isDisplayed()) {
-//           return false;
-//         }
-//       }
-
-//       return true;
-//     } catch (_) {
-//       return true;
-//     }
-//   }, 10000, `Edited fee "${feeType}" was not committed.`);
-
-//   console.log(
-//     `✓ Fee "${feeType}" updated to ${Number(newAmount).toFixed(2)}`
-//   );
-
-//   return Number(newAmount);
+  //   // Keep the remainder of your existing edit-fee logic here.
   // }
-  
-  
-async editFeeAmount(/* keep your existing parameters here */) {
-  await this.waitForLoadingSpinnerToDisappear();
-
-  // Do not click through a modal left open by an earlier test.
-  const visibleModals = await this.driver.findElements(
-    By.css(".modal.in")
-  );
-
-  for (const modal of visibleModals) {
-    if (await modal.isDisplayed()) {
-      throw new Error(
-        "A modal is still open. Close it before editing the fee."
-      );
-    }
-  }
-
-  const editFeeIcon = await this.waitForVisible(
-    By.css(
-      "#docDetails i[title='Edit Fee']"
-    ),
-    15000
-  );
-
-  await this.driver.executeScript(
-    "arguments[0].scrollIntoView({block:'center'});",
-    editFeeIcon
-  );
-
-  await this.waitForLoadingSpinnerToDisappear();
-  await editFeeIcon.click();
-
-  // Keep the remainder of your existing edit-fee logic here.
-}
 
 
 
   // Delete a fee row.
+  
+  async editFeeAmount(feeType, newAmount) {
+  await this.waitForLoadingSpinnerToDisappear();
+
+  const row = await this.getFeeRow(feeType);
+
+  // Click Edit for the selected fee only.
+  const editIcon = await row.findElement(
+    By.css("i[ng-click*='editFee']")
+  );
+
+  await this.driver.executeScript(
+    "arguments[0].scrollIntoView({block:'center'});",
+    editIcon
+  );
+
+  await editIcon.click();
+
+  // Wait for the editable fee amount input.
+  const input = await this.driver.wait(async () => {
+    try {
+      const inputs = await row.findElements(
+        By.css("input[ng-model='paymentDetail.feeAmount']")
+      );
+
+      for (const element of inputs) {
+        if (await element.isDisplayed()) {
+          return element;
+        }
+      }
+    } catch (_) {}
+
+    return false;
+  }, 15000, `Editable amount input not found for "${feeType}".`);
+
+  await input.clear();
+  await input.sendKeys(String(newAmount));
+  await input.sendKeys("\uE004"); // TAB
+
+  // Verify that the new value was entered.
+  await this.driver.wait(async () => {
+    try {
+      return Number(await input.getAttribute("value")) ===
+        Number(newAmount);
+    } catch (_) {
+      return false;
+    }
+  }, 10000, "Updated fee amount was not entered correctly.");
+
+  // Commit the edited fee.
+  const confirmEdit = await row.findElement(
+    By.css("i[ng-click*='addEditedFee']")
+  );
+
+  await this.driver.executeScript(
+    "arguments[0].scrollIntoView({block:'center'});",
+    confirmEdit
+  );
+
+  try {
+    await confirmEdit.click();
+  } catch (_) {
+    await this.driver.executeScript(
+      "arguments[0].click();",
+      confirmEdit
+    );
+  }
+
+  // Wait for edit mode to close.
+  await this.driver.wait(async () => {
+    try {
+      const inputs = await row.findElements(
+        By.css("input[ng-model='paymentDetail.feeAmount']")
+      );
+
+      for (const element of inputs) {
+        if (await element.isDisplayed()) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }, 15000, `Fee "${feeType}" was not committed.`);
+
+  console.log(
+    `✓ Fee "${feeType}" edited to ${Number(newAmount).toFixed(2)}`
+  );
+
+  return Number(newAmount);
+  }
+  
+
   async deleteFeeRow(feeType) {
     const row = await this.getFeeRow(feeType);
 
@@ -4499,7 +4503,233 @@ async waitForLoadingSpinnerToDisappear(timeout = 60000) {
   }, timeout, "Fee Total Amount did not update after saving");
 
   return this.getFeeTableTotalAmount();
+  }
+  
+  async verifyActivityTransactionsAndTotalPaid() {
+  await this.clickTab("activityFeed");
+
+  const activityFeed = await this.waitForVisible(
+    this.panes.activityFeed,
+    60000
+  );
+
+  const table = await this.driver.wait(
+    until.elementLocated(
+      By.css("#activityFeed table.table-bordered.table-striped")
+    ),
+    30000,
+    "Activity transaction table was not found."
+  );
+
+  await this.driver.wait(
+    until.elementIsVisible(table),
+    15000
+  );
+
+  // Read all transaction rows.
+  const rows = await table.findElements(
+    By.css("tbody tr")
+  );
+
+  const transactions = [];
+
+  for (const row of rows) {
+    const cells = await row.findElements(By.css("td"));
+
+    if (cells.length < 8) {
+      continue;
+    }
+
+    const values = await Promise.all(
+      cells.map(async (cell) =>
+        (await cell.getText()).replace(/\s+/g, " ").trim()
+      )
+    );
+
+    // Ignore empty Angular template rows.
+    if (!values[0] || !values[1]) {
+      continue;
+    }
+
+    const invoiceTotal = Number(
+      values[5].replace(/[$,\s]/g, "")
+    );
+
+    if (!Number.isFinite(invoiceTotal)) {
+      throw new Error(
+        `Invalid Invoice Total for transaction ${values[0]}: ${values[5]}`
+      );
+    }
+
+    transactions.push({
+      orderId: values[0],
+      dateTime: values[1],
+      subTotal: values[2],
+      ccFee: values[3],
+      paymentLinkAmount: values[4],
+      invoiceTotal,
+      paymentReferenceNumber: values[6],
+      receiptNumber: values[7],
+    });
+  }
+
+  if (transactions.length === 0) {
+    throw new Error(
+      "No transaction records were displayed in Activity Feed."
+    );
+  }
+
+  // Read Total Paid from the table footer.
+  const footerRows = await table.findElements(
+    By.css("tfoot tr")
+  );
+
+  let totalPaid = null;
+
+  for (const footerRow of footerRows) {
+    const footerText = (
+      await footerRow.getText()
+    ).replace(/\s+/g, " ").trim();
+
+    if (/Total Paid/i.test(footerText)) {
+      const footerCells = await footerRow.findElements(
+        By.css("td")
+      );
+
+      for (let i = 0; i < footerCells.length - 1; i++) {
+        const cellText = await footerCells[i].getText();
+
+        if (/Total Paid/i.test(cellText)) {
+          const amountText = await footerCells[i + 1].getText();
+
+          totalPaid = Number(
+            amountText.replace(/[$,\s]/g, "")
+          );
+
+          break;
+        }
+      }
+    }
+
+    if (totalPaid !== null) {
+      break;
+    }
+  }
+
+  if (!Number.isFinite(totalPaid)) {
+    throw new Error(
+      "Total Paid amount was not found in the Activity Feed table footer."
+    );
+  }
+
+  const calculatedTotal = Number(
+    transactions
+      .reduce((sum, transaction) => sum + transaction.invoiceTotal, 0)
+      .toFixed(2)
+  );
+
+  console.log("\nActivity Feed Transactions:");
+  console.table(transactions);
+
+  console.log("Number of transactions:", transactions.length);
+  console.log("Calculated Total Paid:", calculatedTotal.toFixed(2));
+  console.log("Displayed Total Paid:", totalPaid.toFixed(2));
+
+  return {
+    transactions,
+    transactionCount: transactions.length,
+    calculatedTotal,
+    totalPaid,
+    activityFeedText: await activityFeed.getText(),
+  };
 }
+
+  
+  
+  // Get all saved versions and their Total amounts from Order History.
+  async getOrderHistoryVersions() {
+    await this.clickTab("orderHistory");
+
+    const historyCards = By.css(
+      "#orderHistory div[ng-repeat*='history in orderHistory']"
+    );
+
+    await this.driver.wait(async () => {
+      const cards = await this.driver.findElements(historyCards);
+      return cards.some(async (card) => await card.isDisplayed());
+    }, 30000).catch(async () => {
+      // Use the explicit check below to provide a useful error.
+    });
+
+    const cards = await this.driver.findElements(historyCards);
+    const versions = [];
+
+    for (const card of cards) {
+      try {
+        if (!(await card.isDisplayed())) continue;
+
+        const cardText = (await card.getText())
+          .replace(/\s+/g, " ")
+          .trim();
+
+        // Ignore any history container that does not show a version.
+        const versionMatch = cardText.match(/\bVersion\s*:\s*(\d+)/i);
+        if (!versionMatch) continue;
+
+        const tables = await card.findElements(
+          By.css("table.process-table")
+        );
+
+        if (!tables.length) continue;
+
+        const table = tables[0];
+        const rows = await table.findElements(By.css("tbody tr"));
+        let totalAmount = null;
+
+        for (const row of rows) {
+          const rowText = (await row.getText())
+            .replace(/\s+/g, " ")
+            .trim();
+
+          if (/^Total\b/i.test(rowText)) {
+            const cells = await row.findElements(By.css("td"));
+
+            if (cells.length) {
+              const totalText = (await cells[cells.length - 1].getText())
+                .replace(/,/g, "")
+                .trim();
+
+              const amountMatch = totalText.match(/-?\d+(?:\.\d{1,2})?/);
+
+              if (amountMatch) {
+                totalAmount = Number(amountMatch[0]);
+              }
+            }
+
+            break;
+          }
+        }
+
+        if (totalAmount !== null && Number.isFinite(totalAmount)) {
+          versions.push({
+            version: Number(versionMatch[1]),
+            totalAmount
+          });
+        }
+      } catch (error) {
+        // Skip a history card if it becomes stale during page rendering.
+      }
+    }
+
+    if (versions.length === 0) {
+      throw new Error(
+        "No Order History versions with a Total amount were found."
+      );
+    }
+
+    return versions;
+  }
+
 
 
 }

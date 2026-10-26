@@ -62,6 +62,12 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     country = process.env.PROCESS_COUNTRY || "Afghanistan";
   });
 
+   after(async function () {
+    if (driver) {
+      await driver.quit();
+    }
+  });
+
   it("TC_EXP_001 - Verify top Order ID is displayed and clickable", async function () {
     expect(orderId).to.match(/^\d+$/);
 
@@ -151,293 +157,8 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     expect(text).to.include("Document Uploads");
   });
 
-  it("TC_EXP_008 - Verify uploaded document details", async function () {
-    const text = await expectedDetailsPage.verifyDocumentUploads();
-
-    expect(text).to.be.a("string");
-
-    expect(text.length).to.be.greaterThan(0);
-  });
-
-  it("TC_EXP_009 - Verify uploaded document download when available", async function () {
-    const available =
-      await expectedDetailsPage.checkDocumentUploadAvailability();
-
-    if (available) {
-      const result = await expectedDetailsPage.downloadDocumentIfAvailable();
-
-      expect(result).to.equal(true);
-    } else {
-      expect(available).to.equal(false);
-    }
-  });
-  it("TC_EXP_010 - Verify Return Shipping Label download when available", async function () {
-    const available =
-      await expectedDetailsPage.checkReturnShippingLabelAvailability();
-
-    if (available) {
-      const result =
-        await expectedDetailsPage.downloadReturnShippingLabelIfAvailable();
-
-      expect(result).to.equal(true);
-    } else {
-      expect(available).to.equal(false);
-    }
-  });
-
-  it("TC_EXP_011 - Verify Conversations tab and conversation details", async function () {
-    const text = await expectedDetailsPage.verifyConversationTab();
-
-    expect(text).to.be.a("string");
-
-    expect(text.length).to.be.greaterThan(0);
-  });
-
-  it("TC_EXP_012 - Verify Write New Message and Send", async function () {
-    const message = `Automation test message ${Date.now()}`;
-
-    await expectedDetailsPage.clickWriteNewMessage();
-
-    await expectedDetailsPage.enterMessage(message);
-
-    await expectedDetailsPage.clickSend(message);
-
-    await expectedDetailsPage.verifyLatestMessage(message);
-  });
-
-  it("TC_EXP_013 - Verify Activity Feed", async function () {
-    const text = await expectedDetailsPage.verifyActivityFeed();
-
-    expect(text).to.be.a("string");
-
-    expect(text.length).to.be.greaterThan(0);
-  });
-
-  it("TC_EXP_014 - Verify Payment Requested Amount in Activity Feed", async function () {
-    const amount =
-      await expectedDetailsPage.getPaymentRequestedAmountFromActivity();
-
-    expect(amount).to.be.greaterThan(0);
-  });
-
-  it("TC_EXP_015 - Verify Payment Link in Activity Feed", async function () {
-    const paymentLink =
-      await expectedDetailsPage.verifyPaymentLinkInActivityFeed();
-
-    expect(paymentLink).to.match(/^https?:\/\/.+external-payments/i);
-  });
-
-  it("TC_EXP_016 - Verify Fee Details", async function () {
-    const fees = await expectedDetailsPage.getFeeDetails();
-
-    expect(fees).to.be.an("array");
-
-    expect(fees.length).to.be.greaterThan(0);
-
-    for (const fee of fees) {
-      expect(fee.feeType).to.not.equal("");
-
-      expect(fee.quantity).to.not.equal("");
-
-      expect(fee.unitPrice).to.not.equal("");
-
-      expect(fee.total).to.not.equal("");
-    }
-  });
-
-  // it("TC_EXP_012 - Verify Fee Total Amount", async function () {
-  //   const fees = await expectedDetailsPage.getFeeDetails();
-
-  //   const validFees = fees.filter(
-  //     (fee) =>
-  //       fee.feeType &&
-  //       fee.feeType.toLowerCase() !== "total" &&
-  //       !isNaN(parseFloat(String(fee.total).replace(/[$,]/g, "").trim())),
-  //   );
-
-  //   const calculatedTotal = validFees.reduce((sum, fee) => {
-  //     const amount = parseFloat(String(fee.total).replace(/[$,]/g, "").trim());
-
-  //     return sum + amount;
-  //   }, 0);
-
-  //   const displayedTotal = await driver.executeScript(() => {
-  //     const rows = Array.from(
-  //       document.querySelectorAll("#orderHistory table tbody tr"),
-  //     );
-
-  //     for (const row of rows) {
-  //       const cells = Array.from(row.querySelectorAll("td"));
-
-  //       if (!cells.length) continue;
-
-  //       const firstCell = cells[0].innerText.trim().toLowerCase();
-
-  //       if (firstCell === "total") {
-  //         const lastCell = cells[cells.length - 1].innerText.trim();
-
-  //         const match = lastCell.match(/[\d,]+\.\d{2}/);
-
-  //         if (match) {
-  //           return parseFloat(match[0].replace(/,/g, ""));
-  //         }
-  //       }
-  //     }
-
-  //     return null;
-  //   });
-
-  //   expect(displayedTotal).to.not.equal(null);
-
-  //   expect(calculatedTotal).to.equal(displayedTotal);
-  // });
-
-  function normalizeFeeType(feeType) {
-    return String(feeType)
-      .replace(/\([^)]*\)/g, "")
-      .replace(/:/g, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  }
-  it("TC_EXP_017 - Verify Fee Amounts Between Document Details and Order History", async function () {
-    console.log("\n==========================================");
-    console.log("TC_EXP_017 - Verify Fee Amounts");
-    console.log("==========================================");
-
-    // ------------------------------------------
-    // Get Document Details fees
-    // ------------------------------------------
-
-    console.log("\nGetting fees from Document Details...");
-
-    const documentFees =
-      await expectedDetailsPage.getDocumentDetailsFeeDetails();
-
-    console.log("\nDocument Details Fees:");
-    console.log(JSON.stringify(documentFees, null, 2));
-
-    // ------------------------------------------
-    // Get Document Details total
-    // ------------------------------------------
-
-    const documentTotal = await expectedDetailsPage.getPaymentAmount();
-
-    console.log(`Document Details Total Amount: $${documentTotal.toFixed(2)}`);
-
-    // ------------------------------------------
-    // Get Order History fees
-    // ------------------------------------------
-
-    console.log("\nGetting fees from Order History...");
-
-    const orderHistoryFees = await expectedDetailsPage.getFeeDetails();
-
-    console.log("\nOrder History Fees:");
-    console.log(JSON.stringify(orderHistoryFees, null, 2));
-
-    // ------------------------------------------
-    // Verify fee count
-    // ------------------------------------------
-
-    expect(orderHistoryFees.length).to.equal(
-      documentFees.length,
-      "Number of fees is different between Document Details and Order History",
-    );
-
-    // ------------------------------------------
-    // Compare every fee
-    // ------------------------------------------
-
-    for (const documentFee of documentFees) {
-      const normalizedDocumentFee = normalizeFeeType(documentFee.feeType);
-
-      const matchingOrderFee = orderHistoryFees.find(
-        (orderFee) =>
-          normalizeFeeType(orderFee.feeType) === normalizedDocumentFee,
-      );
-
-      // Fee must exist in Order History
-      expect(
-        matchingOrderFee,
-        `Fee "${documentFee.feeType}" not found in Order History`,
-      ).to.not.equal(undefined);
-
-      // ------------------------------------------
-      // Unit Price
-      // ------------------------------------------
-
-      const documentUnitPrice = Number(documentFee.unitPrice);
-
-      const orderUnitPrice = parseFloat(
-        String(matchingOrderFee.unitPrice).replace(/[$,]/g, "").trim(),
-      );
-
-      console.log(`\n${documentFee.feeType}`);
-
-      console.log(
-        `Unit Price: Document Details=$${documentUnitPrice.toFixed(2)}, ` +
-          `Order History=$${orderUnitPrice.toFixed(2)}`,
-      );
-
-      expect(
-        documentUnitPrice,
-        `Unit Price mismatch for ${documentFee.feeType}`,
-      ).to.equal(orderUnitPrice);
-
-      // ------------------------------------------
-      // Total
-      // ------------------------------------------
-
-      const documentFeeTotal = Number(documentFee.total);
-
-      const orderFeeTotal = parseFloat(
-        String(matchingOrderFee.total).replace(/[$,]/g, "").trim(),
-      );
-
-      console.log(
-        `Total: Document Details=$${documentFeeTotal.toFixed(2)}, ` +
-          `Order History=$${orderFeeTotal.toFixed(2)}`,
-      );
-
-      expect(
-        documentFeeTotal,
-        `Total mismatch for ${documentFee.feeType}`,
-      ).to.equal(orderFeeTotal);
-    }
-
-    // ------------------------------------------
-    // Calculate Order History total dynamically
-    // ------------------------------------------
-
-    const orderHistoryTotal = orderHistoryFees.reduce((sum, fee) => {
-      const amount = parseFloat(String(fee.total).replace(/[$,]/g, "").trim());
-
-      return sum + amount;
-    }, 0);
-
-    console.log("\n------------------------------------------");
-
-    console.log(`Document Details Total : $${documentTotal.toFixed(2)}`);
-
-    console.log(`Order History Total    : $${orderHistoryTotal.toFixed(2)}`);
-
-    console.log("------------------------------------------");
-
-    // ------------------------------------------
-    // Compare overall total
-    // ------------------------------------------
-
-    expect(documentTotal).to.equal(
-      orderHistoryTotal,
-      "Overall Total Amount is different between Document Details and Order History",
-    );
-
-    console.log("\n✓ All fee amounts and total amount are matching.");
-  });
-
- 
-  it("TC_EXP_110 - Verify Document Details opens for the selected Doc ID", async function () {
+   
+  it("TC_EXP_008 - Verify Document Details opens for the selected Doc ID", async function () {
     // Verify selected Order ID and Doc ID
     expect(orderId).to.match(/^\d+$/);
     expect(docId).to.match(/^\d+$/);
@@ -453,7 +174,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log(`✓ Document Details opened for Doc ID: ${docId}`);
   });
 
-  it("TC_EXP_111 - Verify Download Shipping Label opens Attachments and displays the return label", async function () {
+  it("TC_EXP_009 - Verify Download Shipping Label opens Attachments and displays the return label", async function () {
     // Step 1: Open Document Details.
     await expectedDetailsPage.clickTab("documentDetails");
 
@@ -483,7 +204,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log(`✓ TC_EXP_111 passed for Order ID ${orderId}`);
   });
 
-  it("TC_EXP_113 - Verify Print Cover Sheet downloads a PDF", async function () {
+  it("TC_EXP_010 - Verify Print Cover Sheet downloads a PDF", async function () {
     console.log("\n========== TC_EXP_113 - PRINT COVER SHEET ==========");
      await expectedDetailsPage.clickTab("documentDetails");
 
@@ -554,7 +275,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log("✓ TC_EXP_113 PASSED");
   });
 
-  it("TC_EXP_112 - Verify document status message and background based on attachment icon", async function () {
+  it("TC_EXP_011 - Verify document status message and background based on attachment icon", async function () {
     await expectedPage.open();
 
     // Get the top Order ID row.
@@ -649,7 +370,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
   });
 
 
-  it("TC_EXP_114 - Verify Add Stop is saved and Payment Due is updated", async function () {
+  it("TC_EXP_012 - Verify Add Stop is saved and Payment Due is updated", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
 
     const amountBefore = await expectedDetailsPage.getPaymentAmount();
@@ -702,7 +423,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log("✓ TC_EXP_114 PASSED");
   });
 
-  it("TC_EXP_115 - Verify unsaved Add Stop is removed after refresh", async function () {
+  it("TC_EXP_013 - Verify unsaved Add Stop is removed after refresh", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
 
     const amountBefore = await expectedDetailsPage.getPaymentAmount();
@@ -740,7 +461,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log("✓ TC_EXP_115 PASSED");
   });
 
-  // it("TC_EXP_116 - Verify Add Fee is saved in Payment Due", async function () {
+  // it("TC_EXP_014 - Verify Add Fee is saved in Payment Due", async function () {
   //   const feeType = "Copy";
 
   //   await expectedDetailsPage.clickTab("documentDetails");
@@ -838,7 +559,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
   //   console.log("✓ Restore Fees returned Payment Due to its original state.");
   //   });
 
-  it("TC_EXP_118 - Verify payment request amount cannot exceed due amount", async function () {
+  it("TC_EXP_016 - Verify payment request amount cannot exceed due amount", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
 
     const status = await expectedDetailsPage.checkPaymentLinkStatus();
@@ -888,7 +609,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log("✓ TC_EXP_118 PASSED");
   });
 
-  it("TC_EXP_119 - Verify payment request amount can be less than due amount", async function () {
+  it("TC_EXP_017 - Verify payment request amount can be less than due amount", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
 
     const status = await expectedDetailsPage.checkPaymentLinkStatus();
@@ -938,7 +659,7 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log("✓ TC_EXP_119 PASSED");
   });
 
-  it("TC_EXP_120 - Verify error when amount received exceeds due amount", async function () {
+  it("TC_EXP_018 - Verify error when amount received exceeds due amount", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
 
     const documentId = await expectedDetailsPage.getDocumentId();
@@ -1051,7 +772,7 @@ console.log("✓ TC_EXP_120 PASSED; Mark Payment modal closed.");
   });
 
 
-  it("TC_EXP_121 - Verify partial payment updates Order Summary", async function () {
+  it("TC_EXP_019 - Verify partial payment updates Order Summary", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
 
     // Step 1: Capture the current document and payment amounts.
@@ -1176,7 +897,7 @@ console.log("✓ TC_EXP_120 PASSED; Mark Payment modal closed.");
     console.log("Outstanding After:", outstandingAfter);
   });
 
-  it("TC_EXP_122 - Verify full payment clears Outstanding Amount", async function () {
+  it("TC_EXP_020 - Verify full payment clears Outstanding Amount", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
 
     const documentId = await expectedDetailsPage.getDocumentId();
@@ -1328,19 +1049,13 @@ console.log("✓ TC_EXP_120 PASSED; Mark Payment modal closed.");
     console.log("✓ TC_EXP_122 passed.");
   });
 
-  
 // const PRICE_INCREASE = 5;
 
-// TC_EXP_123 - Edit fee, Save Price, Restore Fee.
-// it("TC_EXP_123 - Verify edited fee total and Restore Fee", async function () {
+//   it("TC_EXP_021 - Verify edited fee total and Restore Fee", async function () {
 //   await expectedDetailsPage.clickTab("documentDetails");
+//   await expectedDetailsPage.waitForLoadingToFinish();
 
-//   const testFee =
-//     await expectedDetailsPage.getAnyAvailableFeeType();
-
-//   const totalBefore =
-//     await expectedDetailsPage.getFeeTableTotalAmount();
-
+//   const testFee = await expectedDetailsPage.getAnyAvailableFeeType();
 //   const feesBefore =
 //     await expectedDetailsPage.getDocumentDetailsFeeDetails();
 
@@ -1353,6 +1068,8 @@ console.log("✓ TC_EXP_120 PASSED; Mark Payment modal closed.");
 //   expect(feeBefore, `Fee "${testFee}" should exist`).to.exist;
 
 //   const originalUnitPrice = Number(feeBefore.unitPrice);
+//   const totalBefore =
+//     await expectedDetailsPage.getFeeTableTotalAmount();
 
 //   await expectedDetailsPage.editFeeAmount(
 //     testFee,
@@ -1360,16 +1077,27 @@ console.log("✓ TC_EXP_120 PASSED; Mark Payment modal closed.");
 //   );
 
 //   await expectedDetailsPage.clickSavePrice();
+//     await expectedDetailsPage.waitForLoadingToFinish();
+//     await driver.wait(async () => {
+//   try {
+//     const currentTotal =
+//       await expectedDetailsPage.getFeeTableTotalAmount();
+
+//     return Math.abs(currentTotal - expectedUpdatedTotal) < 0.01;
+//   } catch (_) {
+//     return false;
+//   }
+// }, 45000, "Total Amount did not reach the expected value after Save Price.");
 
 //   const totalAfterSave =
-//     await expectedDetailsPage.getFeeTableTotalAmount();
+//     await expectedDetailsPage.waitForFeeTotalToUpdate(totalBefore);
 
-//   expect(totalAfterSave).to.be.greaterThan(
-//     totalBefore,
-//     "Total Amount should increase after saving the edited fee."
-//   );
+//   expect(totalAfterSave).to.be.greaterThan(totalBefore);
 
 //   await expectedDetailsPage.clickRestoreFees();
+//   await expectedDetailsPage.waitForLoadingToFinish();
+
+//   await this.timeout(60000);
 
 //   const totalAfterRestore =
 //     await expectedDetailsPage.getFeeTableTotalAmount();
@@ -1380,240 +1108,161 @@ console.log("✓ TC_EXP_120 PASSED; Mark Payment modal closed.");
 //     "Restore Fee should return Total Amount to its original value."
 //   );
 
-//   console.log(
-//     `✓ TC_EXP_123 passed. Fee: ${testFee}, ` +
-//     `Before: ${totalBefore}, After Restore: ${totalAfterRestore}`
-//   );
-  // });
+//   console.log("✓ TC_EXP_123 passed.");
+// });
   
-const PRICE_INCREASE = 5;
 
-//
+// it("TC_EXP_022 - Verify edited fee after Save Price and bottom Save", async function () {
+//   this.timeout(120000);
 
 //   await expectedDetailsPage.clickTab("documentDetails");
+//   await expectedDetailsPage.waitForLoadingToFinish();
 
-//   // Select any available fee dynamically.
+//   // Capture the original fee details and total.
 //   const testFee = await expectedDetailsPage.getAnyAvailableFeeType();
 
 //   const feesBefore =
 //     await expectedDetailsPage.getDocumentDetailsFeeDetails();
 
+//   const normalize = value =>
+//     String(value).replace(/\s+/g, " ").trim().toLowerCase();
+
 //   const feeBefore = feesBefore.find(
-//     fee =>
-//       fee.feeType.replace(/\s+/g, " ").trim().toLowerCase() ===
-//       testFee.replace(/\s+/g, " ").trim().toLowerCase()
+//     fee => normalize(fee.feeType) === normalize(testFee)
 //   );
 
 //   expect(feeBefore, `Fee "${testFee}" should exist`).to.exist;
 
 //   const originalUnitPrice = Number(feeBefore.unitPrice);
 //   const originalQuantity = Number(feeBefore.quantity);
-
-//   expect(originalUnitPrice).to.be.a("number");
-//   expect(originalQuantity).to.be.greaterThan(0);
-
 //   const totalBefore =
 //     await expectedDetailsPage.getFeeTableTotalAmount();
 
+//   expect(Number.isFinite(originalUnitPrice)).to.equal(true);
+//   expect(originalQuantity).to.be.greaterThan(0);
+
 //   const expectedIncrease = PRICE_INCREASE * originalQuantity;
+//   const expectedUpdatedTotal = totalBefore + expectedIncrease;
 
 //   console.log("Selected Fee:", testFee);
 //   console.log("Original Unit Price:", originalUnitPrice);
-//   console.log("Original Quantity:", originalQuantity);
+//   console.log("Quantity:", originalQuantity);
 //   console.log("Total Before:", totalBefore);
+//   console.log("Expected Total After Edit:", expectedUpdatedTotal);
 
-//   // Edit fee and commit using the green checkmark.
-//   await expectedDetailsPage.editFeeAmount(
-//     testFee,
-//     originalUnitPrice + PRICE_INCREASE
-//   );
+//   try {
+//     // Step 1: Edit the fee unit price.
+//     await expectedDetailsPage.editFeeAmount(
+//       testFee,
+//       originalUnitPrice + PRICE_INCREASE
+//     );
 
-//   // Save the edited fee price.
-//   await expectedDetailsPage.clickSavePrice();
+//     // Step 2: Click Save Price and wait for recalculation to finish.
+//     await expectedDetailsPage.clickSavePrice();
+//     await expectedDetailsPage.waitForLoadingToFinish();
 
-//   // Wait for Total Amount to reflect the price increase.
-//   await driver.wait(async () => {
-//     try {
-//       const currentTotal =
-//         await expectedDetailsPage.getFeeTableTotalAmount();
+//     // Wait until the total reflects the updated unit price and quantity.
+//     await driver.wait(async () => {
+//       try {
+//         const currentTotal =
+//           await expectedDetailsPage.getFeeTableTotalAmount();
 
-//       return Math.abs(
-//         currentTotal - (totalBefore + expectedIncrease)
-//       ) < 0.01;
-//     } catch (_) {
-//       return false;
-//     }
-//   }, 15000, "Total Amount did not update after saving the edited fee.");
+//         return Math.abs(currentTotal - expectedUpdatedTotal) < 0.01;
+//       } catch (_) {
+//         return false;
+//       }
+//     }, 45000, "Total Amount did not update after Save Price.");
 
-//   const totalAfterSave =
-//     await expectedDetailsPage.getFeeTableTotalAmount();
+//     const totalAfterSavePrice =
+//       await expectedDetailsPage.getFeeTableTotalAmount();
 
-//   console.log("Total After Save Price:", totalAfterSave);
+//     console.log("Total After Save Price:", totalAfterSavePrice);
 
-//   expect(totalAfterSave).to.be.closeTo(
-//     totalBefore + expectedIncrease,
-//     0.01,
-//     "Total Amount should increase by the edited fee amount."
-//   );
+//     expect(totalAfterSavePrice).to.be.closeTo(
+//       expectedUpdatedTotal,
+//       0.01,
+//       "Total Amount should reflect the edited fee price and quantity."
+//     );
 
-//   // Restore the original fees.
-//   await expectedDetailsPage.clickRestoreFees();
+//     // Step 3: Click the bottom Save button.
+//     await expectedDetailsPage.clickDocumentSave();
+//     await expectedDetailsPage.waitForLoadingToFinish();
 
-//   await driver.wait(async () => {
-//     try {
-//       const currentTotal =
-//         await expectedDetailsPage.getFeeTableTotalAmount();
+//     // Wait until the saved total remains correct.
+//     await driver.wait(async () => {
+//       try {
+//         const currentTotal =
+//           await expectedDetailsPage.getFeeTableTotalAmount();
 
-//       return Math.abs(currentTotal - totalBefore) < 0.01;
-//     } catch (_) {
-//       return false;
-//     }
-//   }, 15000, "Restore Fee did not return Total Amount to its original value.");
+//         return Math.abs(currentTotal - expectedUpdatedTotal) < 0.01;
+//       } catch (_) {
+//         return false;
+//       }
+//     }, 45000, "Bottom Save did not preserve the updated Total Amount.");
 
-//   const totalAfterRestore =
-//     await expectedDetailsPage.getFeeTableTotalAmount();
+//     const totalAfterDocumentSave =
+//       await expectedDetailsPage.getFeeTableTotalAmount();
 
-//   expect(totalAfterRestore).to.be.closeTo(
-//     totalBefore,
-//     0.01,
-//     "Restore Fee should return Total Amount to its original value."
-//   );
+//     console.log("Total After Bottom Save:", totalAfterDocumentSave);
 
-//   console.log("Total After Restore:", totalAfterRestore);
-//   console.log("✓ TC_EXP_123 passed.");
+//     expect(totalAfterDocumentSave).to.be.closeTo(
+//       expectedUpdatedTotal,
+//       0.01,
+//       "Bottom Save should preserve the updated Total Amount."
+//     );
+
+//     console.log("✓ Save Price and bottom Save verified.");
+
+//   } finally {
+//     // Restore the original fees even if an assertion fails.
+//     await expectedDetailsPage.waitForLoadingToFinish();
+//     await expectedDetailsPage.clickRestoreFees();
+//     await expectedDetailsPage.waitForLoadingToFinish();
+
+//     await driver.wait(async () => {
+//       try {
+//         const currentTotal =
+//           await expectedDetailsPage.getFeeTableTotalAmount();
+
+//         return Math.abs(currentTotal - totalBefore) < 0.01;
+//       } catch (_) {
+//         return false;
+//       }
+//     }, 45000, "Restore Fee did not return Total Amount to its original value.");
+
+//     const totalAfterRestore =
+//       await expectedDetailsPage.getFeeTableTotalAmount();
+
+//     console.log("Total After Restore:", totalAfterRestore);
+
+//     expect(totalAfterRestore).to.be.closeTo(
+//       totalBefore,
+//       0.01,
+//       "Restore Fee should return Total Amount to its original value."
+//     );
+//   }
+
+//   console.log("✓ TC_EXP_124 passed.");
 // });
 
+  const PRICE_INCREASE = 5;
 
-
-// TC_EXP_124 - Edit fee, Save Price, bottom Save, Restore Fee.
-
-  it("TC_EXP_123 - Verify edited fee total and Restore Fee", async function () {
-  await expectedDetailsPage.clickTab("documentDetails");
-  await expectedDetailsPage.waitForLoadingToFinish();
-
-  const testFee = await expectedDetailsPage.getAnyAvailableFeeType();
-  const feesBefore =
-    await expectedDetailsPage.getDocumentDetailsFeeDetails();
-
-  const feeBefore = feesBefore.find(
-    fee =>
-      fee.feeType.replace(/\s+/g, " ").trim().toLowerCase() ===
-      testFee.replace(/\s+/g, " ").trim().toLowerCase()
-  );
-
-  expect(feeBefore, `Fee "${testFee}" should exist`).to.exist;
-
-  const originalUnitPrice = Number(feeBefore.unitPrice);
-  const totalBefore =
-    await expectedDetailsPage.getFeeTableTotalAmount();
-
-  await expectedDetailsPage.editFeeAmount(
-    testFee,
-    originalUnitPrice + PRICE_INCREASE
-  );
-
-  await expectedDetailsPage.waitForLoadingToFinish();
-  await expectedDetailsPage.clickSavePrice();
-
-  const totalAfterSave =
-    await expectedDetailsPage.waitForFeeTotalToUpdate(totalBefore);
-
-  expect(totalAfterSave).to.be.greaterThan(totalBefore);
-
-  await expectedDetailsPage.clickRestoreFees();
-  await expectedDetailsPage.waitForLoadingToFinish();
-
-  await this.timeout(60000);
-
-  const totalAfterRestore =
-    await expectedDetailsPage.getFeeTableTotalAmount();
-
-  expect(totalAfterRestore).to.be.closeTo(
-    totalBefore,
-    0.01,
-    "Restore Fee should return Total Amount to its original value."
-  );
-
-  console.log("✓ TC_EXP_123 passed.");
-});
-  
-  // it("TC_EXP_124 - Verify edited fee after Save Price and bottom Save", async function () {
-  // await expectedDetailsPage.clickTab("documentDetails");
-
-  // const testFee =
-  //   await expectedDetailsPage.getAnyAvailableFeeType();
-
-  // const totalBefore =
-  //   await expectedDetailsPage.getFeeTableTotalAmount();
-
-  // const feesBefore =
-  //   await expectedDetailsPage.getDocumentDetailsFeeDetails();
-
-  // const feeBefore = feesBefore.find(
-  //   fee =>
-  //     fee.feeType.replace(/\s+/g, " ").trim().toLowerCase() ===
-  //     testFee.replace(/\s+/g, " ").trim().toLowerCase()
-  // );
-
-  // expect(feeBefore, `Fee "${testFee}" should exist`).to.exist;
-
-  // const originalUnitPrice = Number(feeBefore.unitPrice);
-
-  // await expectedDetailsPage.editFeeAmount(
-  //   testFee,
-  //   originalUnitPrice + PRICE_INCREASE
-  // );
-
-  // await expectedDetailsPage.clickSavePrice();
-
-  // const totalAfterSavePrice =
-  //   await expectedDetailsPage.getFeeTableTotalAmount();
-
-  // expect(totalAfterSavePrice).to.be.greaterThan(
-  //   totalBefore,
-  //   "Total Amount should increase after clicking Save Price."
-  // );
-
-  // await expectedDetailsPage.clickDocumentSave();
-
-  // const totalAfterDocumentSave =
-  //   await expectedDetailsPage.getFeeTableTotalAmount();
-
-  // expect(totalAfterDocumentSave).to.be.closeTo(
-  //   totalAfterSavePrice,
-  //   0.01,
-  //   "Bottom Save should preserve the updated Total Amount."
-  // );
-
-  // await expectedDetailsPage.clickRestoreFees();
-
-  // const totalAfterRestore =
-  //   await expectedDetailsPage.getFeeTableTotalAmount();
-
-  // expect(totalAfterRestore).to.be.closeTo(
-  //   totalBefore,
-  //   0.01,
-  //   "Restore Fee should return Total Amount to its original value."
-  // );
-
-  // console.log(
-  //   `✓ TC_EXP_124 passed. Fee: ${testFee}, ` +
-  //   `Before: ${totalBefore}, After Restore: ${totalAfterRestore}`
-  // );
-  //   });
-
-
-// TC_EXP_125 - Delete fee, Save Price, Restore Fee.
-
-  
-it("TC_EXP_124 - Verify edited fee after Save Price and bottom Save", async function () {
+// ============================================================
+// TC_EXP_021 - Edit Fee -> Save Price -> Restore Fees
+// ============================================================
+it("TC_EXP_021 - Verify edited fee total and Restore Fees", async function () {
   this.timeout(120000);
 
   await expectedDetailsPage.clickTab("documentDetails");
   await expectedDetailsPage.waitForLoadingToFinish();
 
-  // Capture the original fee details and total.
-  const testFee = await expectedDetailsPage.getAnyAvailableFeeType();
+  // Step 1: Capture the original Payment Due total.
+  const totalBefore =
+    await expectedDetailsPage.getFeeTableTotalAmount();
+
+  // Step 2: Select an editable fee.
+  const testFee =
+    await expectedDetailsPage.getAnyAvailableFeeType();
 
   const feesBefore =
     await expectedDetailsPage.getDocumentDetailsFeeDetails();
@@ -1628,35 +1277,153 @@ it("TC_EXP_124 - Verify edited fee after Save Price and bottom Save", async func
   expect(feeBefore, `Fee "${testFee}" should exist`).to.exist;
 
   const originalUnitPrice = Number(feeBefore.unitPrice);
-  const originalQuantity = Number(feeBefore.quantity);
+  const quantity = Number(feeBefore.quantity);
+
+  expect(Number.isFinite(originalUnitPrice)).to.equal(true);
+  expect(Number.isFinite(quantity)).to.equal(true);
+  expect(quantity).to.be.greaterThan(0);
+
+  // Calculate the expected total after increasing the unit price.
+  const expectedUpdatedTotal =
+    totalBefore + PRICE_INCREASE * quantity;
+
+  console.log("Selected Fee:", testFee);
+  console.log("Original Total:", totalBefore);
+  console.log("Original Unit Price:", originalUnitPrice);
+  console.log("Quantity:", quantity);
+  console.log("Expected Updated Total:", expectedUpdatedTotal);
+
+  // Step 3: Edit the fee price.
+  await expectedDetailsPage.editFeeAmount(
+    testFee,
+    originalUnitPrice + PRICE_INCREASE
+  );
+
+  // Step 4: Click Save Price.
+  await expectedDetailsPage.clickSavePrice();
+  await expectedDetailsPage.waitForLoadingToFinish();
+
+  // Step 5: Verify that Payment Due Total changes to the expected value.
+  await driver.wait(
+    async () => {
+      try {
+        const currentTotal =
+          await expectedDetailsPage.getFeeTableTotalAmount();
+
+        return Math.abs(currentTotal - expectedUpdatedTotal) < 0.01;
+      } catch (_) {
+        return false;
+      }
+    },
+    45000,
+    "Payment Due Total Amount did not reach the expected value after Save Price."
+  );
+
+  const totalAfterSavePrice =
+    await expectedDetailsPage.getFeeTableTotalAmount();
+
+  console.log("Total After Save Price:", totalAfterSavePrice);
+
+  expect(totalAfterSavePrice).to.be.closeTo(
+    expectedUpdatedTotal,
+    0.01,
+    "Total Amount should reflect the edited fee price."
+  );
+
+  // Step 6: Click Restore Fees.
+  await expectedDetailsPage.clickRestoreFees();
+  await expectedDetailsPage.waitForLoadingToFinish();
+
+  // Step 7: Verify that the original total is restored.
+  await driver.wait(
+    async () => {
+      try {
+        const restoredTotal =
+          await expectedDetailsPage.getFeeTableTotalAmount();
+
+        return Math.abs(restoredTotal - totalBefore) < 0.01;
+      } catch (_) {
+        return false;
+      }
+    },
+    45000,
+    "Restore Fees did not restore the original Total Amount."
+  );
+
+  const totalAfterRestore =
+    await expectedDetailsPage.getFeeTableTotalAmount();
+
+  console.log("Total After Restore Fees:", totalAfterRestore);
+
+  expect(totalAfterRestore).to.be.closeTo(
+    totalBefore,
+    0.01,
+    "Restore Fees should return Total Amount to its original value."
+  );
+
+  console.log("✓ TC_EXP_021 passed.");
+});
+
+
+// ============================================================
+// TC_EXP_022 - Edit Fee -> Save Price -> Bottom Save
+//               -> Restore Fees
+// ============================================================
+it("TC_EXP_022 - Verify edited fee after Save Price and bottom Save", async function () {
+  this.timeout(180000);
+
+  await expectedDetailsPage.clickTab("documentDetails");
+  await expectedDetailsPage.waitForLoadingToFinish();
+
+  // Step 1: Capture the original Payment Due total.
   const totalBefore =
     await expectedDetailsPage.getFeeTableTotalAmount();
 
-  expect(Number.isFinite(originalUnitPrice)).to.equal(true);
-  expect(originalQuantity).to.be.greaterThan(0);
+  // Step 2: Select an editable fee and capture its original values.
+  const testFee =
+    await expectedDetailsPage.getAnyAvailableFeeType();
 
-  const expectedIncrease = PRICE_INCREASE * originalQuantity;
-  const expectedUpdatedTotal = totalBefore + expectedIncrease;
+  const feesBefore =
+    await expectedDetailsPage.getDocumentDetailsFeeDetails();
+
+  const normalize = value =>
+    String(value).replace(/\s+/g, " ").trim().toLowerCase();
+
+  const feeBefore = feesBefore.find(
+    fee => normalize(fee.feeType) === normalize(testFee)
+  );
+
+  expect(feeBefore, `Fee "${testFee}" should exist`).to.exist;
+
+  const originalUnitPrice = Number(feeBefore.unitPrice);
+  const quantity = Number(feeBefore.quantity);
+
+  expect(Number.isFinite(originalUnitPrice)).to.equal(true);
+  expect(Number.isFinite(quantity)).to.equal(true);
+  expect(quantity).to.be.greaterThan(0);
+
+  const expectedUpdatedTotal =
+    totalBefore + PRICE_INCREASE * quantity;
 
   console.log("Selected Fee:", testFee);
+  console.log("Original Total:", totalBefore);
   console.log("Original Unit Price:", originalUnitPrice);
-  console.log("Quantity:", originalQuantity);
-  console.log("Total Before:", totalBefore);
-  console.log("Expected Total After Edit:", expectedUpdatedTotal);
+  console.log("Quantity:", quantity);
+  console.log("Expected Updated Total:", expectedUpdatedTotal);
 
-  try {
-    // Step 1: Edit the fee unit price.
-    await expectedDetailsPage.editFeeAmount(
-      testFee,
-      originalUnitPrice + PRICE_INCREASE
-    );
+  // Step 3: Edit the fee price.
+  await expectedDetailsPage.editFeeAmount(
+    testFee,
+    originalUnitPrice + PRICE_INCREASE
+  );
 
-    // Step 2: Click Save Price and wait for recalculation to finish.
-    await expectedDetailsPage.clickSavePrice();
-    await expectedDetailsPage.waitForLoadingToFinish();
+  // Step 4: Click Save Price.
+  await expectedDetailsPage.clickSavePrice();
+  await expectedDetailsPage.waitForLoadingToFinish();
 
-    // Wait until the total reflects the updated unit price and quantity.
-    await driver.wait(async () => {
+  // Step 5: Verify the updated Payment Due total.
+  await driver.wait(
+    async () => {
       try {
         const currentTotal =
           await expectedDetailsPage.getFeeTableTotalAmount();
@@ -1665,25 +1432,29 @@ it("TC_EXP_124 - Verify edited fee after Save Price and bottom Save", async func
       } catch (_) {
         return false;
       }
-    }, 45000, "Total Amount did not update after Save Price.");
+    },
+    45000,
+    "Payment Due Total Amount did not update after Save Price."
+  );
 
-    const totalAfterSavePrice =
-      await expectedDetailsPage.getFeeTableTotalAmount();
+  const totalAfterSavePrice =
+    await expectedDetailsPage.getFeeTableTotalAmount();
 
-    console.log("Total After Save Price:", totalAfterSavePrice);
+  console.log("Total After Save Price:", totalAfterSavePrice);
 
-    expect(totalAfterSavePrice).to.be.closeTo(
-      expectedUpdatedTotal,
-      0.01,
-      "Total Amount should reflect the edited fee price and quantity."
-    );
+  expect(totalAfterSavePrice).to.be.closeTo(
+    expectedUpdatedTotal,
+    0.01,
+    "Total Amount should reflect the edited fee price."
+  );
 
-    // Step 3: Click the bottom Save button.
-    await expectedDetailsPage.clickDocumentSave();
-    await expectedDetailsPage.waitForLoadingToFinish();
+  // Step 6: Click the bottom Save button to save the document.
+  await expectedDetailsPage.clickDocumentSave();
+  await expectedDetailsPage.waitForLoadingToFinish();
 
-    // Wait until the saved total remains correct.
-    await driver.wait(async () => {
+  // Step 7: Verify that bottom Save preserves the updated total.
+  await driver.wait(
+    async () => {
       try {
         const currentTotal =
           await expectedDetailsPage.getFeeTableTotalAmount();
@@ -1692,55 +1463,57 @@ it("TC_EXP_124 - Verify edited fee after Save Price and bottom Save", async func
       } catch (_) {
         return false;
       }
-    }, 45000, "Bottom Save did not preserve the updated Total Amount.");
+    },
+    45000,
+    "Bottom Save did not preserve the updated Total Amount."
+  );
 
-    const totalAfterDocumentSave =
-      await expectedDetailsPage.getFeeTableTotalAmount();
+  const totalAfterDocumentSave =
+    await expectedDetailsPage.getFeeTableTotalAmount();
 
-    console.log("Total After Bottom Save:", totalAfterDocumentSave);
+  console.log("Total After Bottom Save:", totalAfterDocumentSave);
 
-    expect(totalAfterDocumentSave).to.be.closeTo(
-      expectedUpdatedTotal,
-      0.01,
-      "Bottom Save should preserve the updated Total Amount."
-    );
+  expect(totalAfterDocumentSave).to.be.closeTo(
+    expectedUpdatedTotal,
+    0.01,
+    "Bottom Save should preserve the updated Total Amount."
+  );
 
-    console.log("✓ Save Price and bottom Save verified.");
+  // Step 8: Click Restore Fees.
+  await expectedDetailsPage.clickRestoreFees();
+  await expectedDetailsPage.waitForLoadingToFinish();
 
-  } finally {
-    // Restore the original fees even if an assertion fails.
-    await expectedDetailsPage.waitForLoadingToFinish();
-    await expectedDetailsPage.clickRestoreFees();
-    await expectedDetailsPage.waitForLoadingToFinish();
-
-    await driver.wait(async () => {
+  // Step 9: Verify the original total is restored.
+  await driver.wait(
+    async () => {
       try {
-        const currentTotal =
+        const restoredTotal =
           await expectedDetailsPage.getFeeTableTotalAmount();
 
-        return Math.abs(currentTotal - totalBefore) < 0.01;
+        return Math.abs(restoredTotal - totalBefore) < 0.01;
       } catch (_) {
         return false;
       }
-    }, 45000, "Restore Fee did not return Total Amount to its original value.");
+    },
+    45000,
+    "Restore Fees did not restore the original Total Amount after bottom Save."
+  );
 
-    const totalAfterRestore =
-      await expectedDetailsPage.getFeeTableTotalAmount();
+  const totalAfterRestore =
+    await expectedDetailsPage.getFeeTableTotalAmount();
 
-    console.log("Total After Restore:", totalAfterRestore);
+  console.log("Total After Restore Fees:", totalAfterRestore);
 
-    expect(totalAfterRestore).to.be.closeTo(
-      totalBefore,
-      0.01,
-      "Restore Fee should return Total Amount to its original value."
-    );
-  }
+  expect(totalAfterRestore).to.be.closeTo(
+    totalBefore,
+    0.01,
+    "Restore Fees should return Total Amount to its original value."
+  );
 
-  console.log("✓ TC_EXP_124 passed.");
+  console.log("✓ TC_EXP_022 passed.");
 });
-
   
-  it("TC_EXP_125 - Verify deleted fee and Restore Fee", async function () {
+  it("TC_EXP_023 - Verify deleted fee and Restore Fee", async function () {
   await expectedDetailsPage.clickTab("documentDetails");
 
   const testFee =
@@ -1872,7 +1645,7 @@ it("TC_EXP_126 - Verify Print Document icon opens a new window", async function 
 });
   
   
-it("TC_EXP_127 - Verify Split Document creates two documents with the same Order ID and different Doc IDs", async function () {
+it("TC_EXP_024 - Verify Split Document creates two documents with the same Order ID and different Doc IDs", async function () {
   this.timeout(120000);
 
   // Step 1: Remember the original IDs.
@@ -1927,10 +1700,710 @@ console.log("Verified Doc IDs:", docIds);
 
 });
 
+  //=============================================================================================
+
+  it("TC_EXP_025 - Verify uploaded document details", async function () {
+    const text = await expectedDetailsPage.verifyDocumentUploads();
+
+    expect(text).to.be.a("string");
+
+    expect(text.length).to.be.greaterThan(0);
+  });
+
+  it("TC_EXP_026 - Verify uploaded document download when available", async function () {
+    const available =
+      await expectedDetailsPage.checkDocumentUploadAvailability();
+
+    if (available) {
+      const result = await expectedDetailsPage.downloadDocumentIfAvailable();
+
+      expect(result).to.equal(true);
+    } else {
+      expect(available).to.equal(false);
+    }
+  });
+  it("TC_EXP_027 - Verify Return Shipping Label download when available", async function () {
+    const available =
+      await expectedDetailsPage.checkReturnShippingLabelAvailability();
+
+    if (available) {
+      const result =
+        await expectedDetailsPage.downloadReturnShippingLabelIfAvailable();
+
+      expect(result).to.equal(true);
+    } else {
+      expect(available).to.equal(false);
+    }
+  });
+
+  //===============================================================================================
+
+  it("TC_EXP_028 - Verify Conversations tab and conversation details", async function () {
+    const text = await expectedDetailsPage.verifyConversationTab();
+
+    expect(text).to.be.a("string");
+
+    expect(text.length).to.be.greaterThan(0);
+  });
+
+  it("TC_EXP_029 - Verify Write New Message and Send", async function () {
+    const message = `Automation test message ${Date.now()}`;
+
+    await expectedDetailsPage.clickWriteNewMessage();
+
+    await expectedDetailsPage.enterMessage(message);
+
+    await expectedDetailsPage.clickSend(message);
+
+    await expectedDetailsPage.verifyLatestMessage(message);
+  });
+
+  it("TC_EXP_0300 - Verify Print Conversation opens in a new tab", async function () {
+  this.timeout(120000);
+
+  const originalTab = await driver.getWindowHandle();
+  const originalHandles = await driver.getAllWindowHandles();
+
+  let newTab = null;
+
+  try {
+    // Click Print Conversation.
+    await expectedDetailsPage.clickPrintConversation();
+
+    // Wait for a new window or tab.
+    await driver.wait(async () => {
+      const handles = await driver.getAllWindowHandles();
+
+      return handles.some(
+        (handle) => !originalHandles.includes(handle)
+      );
+    }, 30000, "Print Conversation did not open a new tab.");
+
+    const handles = await driver.getAllWindowHandles();
+
+    newTab = handles.find(
+      (handle) => !originalHandles.includes(handle)
+    );
+
+    expect(newTab, "New print tab should open").to.not.equal(undefined);
+
+    // Switch to the print tab and verify it opened.
+    await driver.switchTo().window(newTab);
+
+    await driver.wait(async () => {
+      try {
+        return await driver.executeScript(
+          "return document.readyState === 'complete' || " +
+          "document.readyState === 'interactive';"
+        );
+      } catch (error) {
+        return false;
+      }
+    }, 30000, "Print tab did not load.");
+
+    console.log("Print Conversation tab opened successfully.");
+    console.log("Print tab URL:", await driver.getCurrentUrl());
+
+    expect(
+      (await driver.getCurrentUrl()).length
+    ).to.be.greaterThan(0);
+
+  } finally {
+    // Close the print tab without letting a close failure
+    // mask the actual test result.
+    if (newTab) {
+      try {
+        const handles = await driver.getAllWindowHandles();
+
+        if (handles.includes(newTab)) {
+          await driver.switchTo().window(newTab);
+
+          // Try normal Selenium close first.
+          try {
+            await driver.close();
+          } catch (closeError) {
+            console.log(
+              "Normal close failed; trying CDP target close:",
+              closeError.message
+            );
+
+            // Fallback: close the Chrome target using CDP.
+            try {
+              await driver.executeCdpCommand(
+                "Target.closeTarget",
+                { targetId: newTab }
+              );
+            } catch (cdpError) {
+              console.log(
+                "CDP close was unsuccessful:",
+                cdpError.message
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.log("Print tab cleanup warning:", error.message);
+      }
+    }
+
+    // Restore the original window.
+    try {
+      const remainingHandles = await driver.getAllWindowHandles();
+
+      if (remainingHandles.includes(originalTab)) {
+        await driver.switchTo().window(originalTab);
+      }
+    } catch (error) {
+      console.log("Could not restore original tab:", error.message);
+    }
+  }
+});
+
+
+  //================================================================================================
+
+  it("TC_EXP_030 - Verify Activity Feed", async function () {
+    const text = await expectedDetailsPage.verifyActivityFeed();
+
+    expect(text).to.be.a("string");
+
+    expect(text.length).to.be.greaterThan(0);
+  });
+
+  it("TC_EXP_031 - Verify Payment Requested Amount in Activity Feed", async function () {
+    const amount =
+      await expectedDetailsPage.getPaymentRequestedAmountFromActivity();
+
+    expect(amount).to.be.greaterThan(0);
+  });
+
+  it("TC_EXP_032 - Verify Payment Link in Activity Feed", async function () {
+    const paymentLink =
+      await expectedDetailsPage.verifyPaymentLinkInActivityFeed();
+
+    expect(paymentLink).to.match(/^https?:\/\/.+external-payments/i);
+  });
+
+  it("TC_EXP_0331 - Verify Activity Transactions and Total Paid", async function () {
+  this.timeout(60000);
+
+  const result =
+    await expectedDetailsPage.verifyActivityTransactionsAndTotalPaid();
+
+  // Verify transactions are displayed.
+  expect(result.transactions).to.be.an("array");
+  expect(result.transactionCount).to.be.greaterThan(0);
+
+  // Verify every transaction has the required table values.
+  for (const transaction of result.transactions) {
+    expect(transaction.orderId).to.not.equal("");
+    expect(transaction.dateTime).to.not.equal("");
+    expect(transaction.subTotal).to.not.equal("");
+    expect(transaction.invoiceTotal).to.be.a("number");
+  }
+
+  // Verify calculated transaction total matches Total Paid.
+  expect(
+    result.calculatedTotal,
+    "Sum of Invoice Total values should match Total Paid"
+  ).to.be.closeTo(result.totalPaid, 0.01);
+
+  console.log(
+    "✓ TC_EXP_033 PASSED - Activity transactions and Total Paid verified."
+  );
+});
+
+
+  it("TC_EXP_0330 - Verify Export Transaction Reports downloads an Excel file", async function () {
+  this.timeout(120000);
+
+  const downloadsDirectory = path.join(os.homedir(), "Downloads");
+
+  // Ensure the Downloads folder exists.
+  if (!fs.existsSync(downloadsDirectory)) {
+    fs.mkdirSync(downloadsDirectory, { recursive: true });
+  }
+
+  // Take a snapshot before clicking the export button.
+  const existingFiles = new Map();
+
+  for (const file of fs.readdirSync(downloadsDirectory)) {
+    const fullPath = path.join(downloadsDirectory, file);
+
+    try {
+      const stat = fs.statSync(fullPath);
+      existingFiles.set(file, {
+        size: stat.size,
+        mtimeMs: stat.mtimeMs,
+      });
+    } catch (_) {
+      // Ignore files that cannot be accessed.
+    }
+  }
+
+  // Open Activity Feed.
+  await expectedDetailsPage.clickTab("activityFeed");
+
+  // Locate the Export transaction reports button.
+  const exportButton = By.xpath(
+    "//div[@id='activityFeed']" +
+      "//button[contains(@ng-click,'exportTransactionReports') " +
+      "and contains(normalize-space(.),'Export transaction reports')]"
+  );
+
+  const button = await driver.wait(
+    until.elementLocated(exportButton),
+    30000,
+    "Export transaction reports button was not found."
+  );
+
+  await driver.wait(
+    until.elementIsVisible(button),
+    15000
+  );
+
+  // Click the export button.
+  await driver.executeScript(
+    "arguments[0].scrollIntoView({block:'center'});",
+    button
+  );
+
+  await button.click();
+
+  console.log("Clicked Export transaction reports.");
+
+  // Wait for a new or updated Excel file to finish downloading.
+  let downloadedFile = null;
+  const startTime = Date.now();
+  const timeout = 90000;
+  const stableCounts = new Map();
+
+  while (Date.now() - startTime < timeout) {
+    const files = fs.readdirSync(downloadsDirectory);
+
+    for (const file of files) {
+      const fullPath = path.join(downloadsDirectory, file);
+
+      // Accept common Excel extensions.
+      if (!/\.(xlsx|xls)$/i.test(file)) {
+        continue;
+      }
+
+      // Ignore temporary/incomplete downloads.
+      if (/\.(crdownload|tmp)$/i.test(file)) {
+        continue;
+      }
+
+      try {
+        const stat = fs.statSync(fullPath);
+        const previous = existingFiles.get(file);
+
+        const isNewOrUpdated =
+          !previous ||
+          previous.size !== stat.size ||
+          previous.mtimeMs !== stat.mtimeMs;
+
+        if (!isNewOrUpdated || stat.size === 0) {
+          continue;
+        }
+
+        // Require the file size to remain stable across polling cycles.
+        const previousSize = stableCounts.get(file);
+
+        if (previousSize === stat.size) {
+          downloadedFile = fullPath;
+          break;
+        }
+
+        stableCounts.set(file, stat.size);
+      } catch (_) {
+        // The browser may still be writing the file.
+      }
+    }
+
+    if (downloadedFile) {
+      break;
+    }
+
+    await driver.sleep(1000);
+  }
+
+  // Verify the download.
+  expect(
+    downloadedFile,
+    "An Excel transaction report should be downloaded."
+  ).to.not.equal(null);
+
+  expect(fs.existsSync(downloadedFile)).to.equal(true);
+  expect(fs.statSync(downloadedFile).size).to.be.greaterThan(0);
+
+  console.log("Downloaded Excel report:", downloadedFile);
+  console.log("File size:", fs.statSync(downloadedFile).size, "bytes");
+  console.log("✓ TC_EXP_033 PASSED");
+});
+
+
+   //==========================================================================
+
+  it("TC_EXP_033 - Verify Fee Details", async function () {
+    const fees = await expectedDetailsPage.getFeeDetails();
+
+    expect(fees).to.be.an("array");
+
+    expect(fees.length).to.be.greaterThan(0);
+
+    for (const fee of fees) {
+      expect(fee.feeType).to.not.equal("");
+
+      expect(fee.quantity).to.not.equal("");
+
+      expect(fee.unitPrice).to.not.equal("");
+
+      expect(fee.total).to.not.equal("");
+    }
+  });
+
+  function normalizeFeeType(feeType) {
+    return String(feeType)
+      .replace(/\([^)]*\)/g, "")
+      .replace(/:/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+  it("TC_EXP_034 - Verify Fee Amounts Between Document Details and Order History", async function () {
+    console.log("\n==========================================");
+    console.log("TC_EXP_017 - Verify Fee Amounts");
+    console.log("==========================================");
+
+    // ------------------------------------------
+    // Get Document Details fees
+    // ------------------------------------------
+
+    console.log("\nGetting fees from Document Details...");
+
+    const documentFees =
+      await expectedDetailsPage.getDocumentDetailsFeeDetails();
+
+    console.log("\nDocument Details Fees:");
+    console.log(JSON.stringify(documentFees, null, 2));
+
+    // ------------------------------------------
+    // Get Document Details total
+    // ------------------------------------------
+
+    const documentTotal = await expectedDetailsPage.getPaymentAmount();
+
+    console.log(`Document Details Total Amount: $${documentTotal.toFixed(2)}`);
+
+    // ------------------------------------------
+    // Get Order History fees
+    // ------------------------------------------
+
+    console.log("\nGetting fees from Order History...");
+
+    const orderHistoryFees = await expectedDetailsPage.getFeeDetails();
+
+    console.log("\nOrder History Fees:");
+    console.log(JSON.stringify(orderHistoryFees, null, 2));
+
+    // ------------------------------------------
+    // Verify fee count
+    // ------------------------------------------
+
+    expect(orderHistoryFees.length).to.equal(
+      documentFees.length,
+      "Number of fees is different between Document Details and Order History",
+    );
+
+    // ------------------------------------------
+    // Compare every fee
+    // ------------------------------------------
+
+    for (const documentFee of documentFees) {
+      const normalizedDocumentFee = normalizeFeeType(documentFee.feeType);
+
+      const matchingOrderFee = orderHistoryFees.find(
+        (orderFee) =>
+          normalizeFeeType(orderFee.feeType) === normalizedDocumentFee,
+      );
+
+      // Fee must exist in Order History
+      expect(
+        matchingOrderFee,
+        `Fee "${documentFee.feeType}" not found in Order History`,
+      ).to.not.equal(undefined);
+
+      // ------------------------------------------
+      // Unit Price
+      // ------------------------------------------
+
+      const documentUnitPrice = Number(documentFee.unitPrice);
+
+      const orderUnitPrice = parseFloat(
+        String(matchingOrderFee.unitPrice).replace(/[$,]/g, "").trim(),
+      );
+
+      console.log(`\n${documentFee.feeType}`);
+
+      console.log(
+        `Unit Price: Document Details=$${documentUnitPrice.toFixed(2)}, ` +
+          `Order History=$${orderUnitPrice.toFixed(2)}`,
+      );
+
+      expect(
+        documentUnitPrice,
+        `Unit Price mismatch for ${documentFee.feeType}`,
+      ).to.equal(orderUnitPrice);
+
+      // ------------------------------------------
+      // Total
+      // ------------------------------------------
+
+      const documentFeeTotal = Number(documentFee.total);
+
+      const orderFeeTotal = parseFloat(
+        String(matchingOrderFee.total).replace(/[$,]/g, "").trim(),
+      );
+
+      console.log(
+        `Total: Document Details=$${documentFeeTotal.toFixed(2)}, ` +
+          `Order History=$${orderFeeTotal.toFixed(2)}`,
+      );
+
+      expect(
+        documentFeeTotal,
+        `Total mismatch for ${documentFee.feeType}`,
+      ).to.equal(orderFeeTotal);
+    }
+
+    // ------------------------------------------
+    // Calculate Order History total dynamically
+    // ------------------------------------------
+
+    const orderHistoryTotal = orderHistoryFees.reduce((sum, fee) => {
+      const amount = parseFloat(String(fee.total).replace(/[$,]/g, "").trim());
+
+      return sum + amount;
+    }, 0);
+
+    console.log("\n------------------------------------------");
+
+    console.log(`Document Details Total : $${documentTotal.toFixed(2)}`);
+
+    console.log(`Order History Total    : $${orderHistoryTotal.toFixed(2)}`);
+
+    console.log("------------------------------------------");
+
+    // ------------------------------------------
+    // Compare overall total
+    // ------------------------------------------
+
+    expect(documentTotal).to.equal(
+      orderHistoryTotal,
+      "Overall Total Amount is different between Document Details and Order History",
+    );
+
+    console.log("\n✓ All fee amounts and total amount are matching.");
+  });
+
+  
+it("TC_EXP_0332 - Verify Order History Versions and Latest Total Amount", async function () {
+    console.log("\n==========================================");
+    console.log("TC_EXP_0332 - Verify Order History Versions");
+    console.log("==========================================");
+
+    // Step 1: Get Payment Due total from Document Details.
+    await expectedDetailsPage.clickTab("documentDetails");
+
+    const paymentDueTotal = Number(
+        await expectedDetailsPage.getPaymentAmount()
+    );
+
+    console.log(
+        `Payment Due Total: $${paymentDueTotal.toFixed(2)}`
+    );
+
+    // Step 2: Open Order History and get all saved versions.
+    await expectedDetailsPage.clickTab("orderHistory");
+
+    const versions =
+        await expectedDetailsPage.getOrderHistoryVersions();
+
+    console.log("Versions found in Order History:");
+    console.table(versions);
+
+    expect(versions, "Order History should contain saved versions")
+        .to.be.an("array")
+        .that.is.not.empty;
+
+    // Step 3: Sort versions by version number.
+    const sortedVersions = [...versions].sort(
+        (a, b) => a.version - b.version
+    );
+
+    // Step 4: Verify version numbers are sequential.
+    for (let i = 1; i < sortedVersions.length; i++) {
+        expect(
+            sortedVersions[i].version,
+            `Version sequence is incorrect: ${sortedVersions[i - 1].version} followed by ${sortedVersions[i].version}`
+        ).to.equal(sortedVersions[i - 1].version + 1);
+    }
+
+    console.log(
+        `First Version: ${sortedVersions[0].version}`
+    );
+
+    console.log(
+        `Latest Version: ${sortedVersions[sortedVersions.length - 1].version}`
+    );
+
+    // Step 5: Get the latest version and its Total amount.
+    const latestVersion = sortedVersions[sortedVersions.length - 1];
+
+    console.log(
+        `Latest Order History Total: $${latestVersion.totalAmount.toFixed(2)}`
+    );
+
+    // Step 6: Verify latest Order History total matches Payment Due.
+    expect(
+        latestVersion.totalAmount,
+        `Latest Order History total ($${latestVersion.totalAmount.toFixed(2)}) should match Payment Due ($${paymentDueTotal.toFixed(2)})`
+    ).to.be.closeTo(paymentDueTotal, 0.01);
+
+    console.log(
+        "PASS: Order History versions are sequential and the latest total matches Payment Due."
+    );
+  });
+  
+
+  // it("TC_EXP_0332 - Verify Order History Versions and Latest Total Amount", async function () {
+  //   console.log("\n==========================================");
+  //   console.log("TC_EXP_0332 - Verify Order History Versions");
+  //   console.log("==========================================");
+
+  //   // Step 1: Read the amount of each document from Order Summary.
+  //   await expectedDetailsPage.clickTab("documentDetails");
+
+  //   const documentAmounts = await expectedDetailsPage.driver.executeScript(() => {
+  //     const normalize = (text) =>
+  //       (text || "").replace(/\s+/g, " ").trim();
+
+  //     const headings = Array.from(document.querySelectorAll("h5"));
+
+  //     const amounts = [];
+
+  //     for (const heading of headings) {
+  //       const label = normalize(heading.innerText);
+
+  //       // Match Doc Amount-1, Doc Amount-2, etc.
+  //       if (!/^Doc Amount-\d+\b/i.test(label)) {
+  //         continue;
+  //       }
+
+  //       const labelColumn = heading.closest(".col-md-8");
+
+  //       if (!labelColumn) {
+  //         continue;
+  //       }
+
+  //       const valueColumn = labelColumn.nextElementSibling;
+
+  //       if (!valueColumn || !valueColumn.matches(".col-md-4.price")) {
+  //         continue;
+  //       }
+
+  //       const strong = valueColumn.querySelector("strong");
+
+  //       if (!strong) {
+  //         continue;
+  //       }
+
+  //       const match = normalize(strong.innerText)
+  //         .replace(/,/g, "")
+  //         .match(/-?\d+(?:\.\d{1,2})?/);
+
+  //       if (match) {
+  //         amounts.push({
+  //           document: label.replace(/:$/, ""),
+  //           amount: Number(match[0])
+  //         });
+  //       }
+  //     }
+
+  //     return amounts;
+  //   });
+
+  //   expect(
+  //     documentAmounts,
+  //     "No document amounts were found in the Order Summary"
+  //   ).to.be.an("array").that.is.not.empty;
+
+  //   const expectedOrderTotal = Number(
+  //     documentAmounts
+  //       .reduce((sum, doc) => sum + doc.amount, 0)
+  //       .toFixed(2)
+  //   );
+
+  //   console.log("Document amounts in Order Summary:");
+  //   console.table(documentAmounts);
+  //   console.log(
+  //     `Expected Order Total: $${expectedOrderTotal.toFixed(2)}`
+  //   );
+
+  //   // Step 2: Read versions from Order History.
+  //   await expectedDetailsPage.clickTab("orderHistory");
+
+  //   const versions = await expectedDetailsPage.getOrderHistoryVersions();
+
+  //   console.log("Versions found in Order History:");
+  //   console.table(versions);
+
+  //   expect(versions, "Order History versions were not found")
+  //     .to.be.an("array").that.is.not.empty;
+
+  //   // Step 3: Verify versions increase consecutively without gaps.
+  //   const versionNumbers = versions
+  //     .map(item => Number(item.version))
+  //     .sort((a, b) => a - b);
+
+  //   for (let i = 0; i < versionNumbers.length; i++) {
+  //     expect(
+  //       Number.isInteger(versionNumbers[i]),
+  //       `Invalid version number: ${versionNumbers[i]}`
+  //     ).to.equal(true);
+
+  //     if (i > 0) {
+  //       expect(
+  //         versionNumbers[i],
+  //         `Expected version ${versionNumbers[i - 1] + 1} after version ${versionNumbers[i - 1]}`
+  //       ).to.equal(versionNumbers[i - 1] + 1);
+  //     }
+  //   }
+
+  //   // Step 4: Find the latest/highest version.
+  //   const latestVersion = versions.reduce((latest, current) =>
+  //     Number(current.version) > Number(latest.version) ? current : latest
+  //   );
+
+  //   console.log(`Latest Version: ${latestVersion.version}`);
+  //   console.log(
+  //     `Latest Order History Total: $${Number(latestVersion.totalAmount).toFixed(2)}`
+  //   );
+
+  //   // Step 5: Compare latest Order History total with the sum of
+  //   // all document amounts in Order Summary.
+  //   expect(
+  //     Number(latestVersion.totalAmount),
+  //     `Latest Order History total ($${Number(latestVersion.totalAmount).toFixed(2)}) does not match the combined Order Summary total ($${expectedOrderTotal.toFixed(2)})`
+  //   ).to.be.closeTo(expectedOrderTotal, 0.01);
+  // });
 
 
 
-  it("TC_EXP_0018 - Verify Contact Details", async function () {
+  //===========================================================================
+
+  it("TC_EXP_035 - Verify Contact Details", async function () {
     const text = await expectedDetailsPage.verifyContactDetails();
 
     expect(text).to.be.a("string");
@@ -1938,7 +2411,7 @@ console.log("Verified Doc IDs:", docIds);
     expect(text.length).to.be.greaterThan(0);
   });
 
-  it("TC_EXP_019 - Verify Add New button opens address form", async function () {
+  it("TC_EXP_036 - Verify Add New button opens address form", async function () {
     await expectedDetailsPage.clickContactDetails();
 
     await expectedDetailsPage.clickAddNewAddress();
@@ -1953,7 +2426,7 @@ console.log("Verified Doc IDs:", docIds);
     await expectedDetailsPage.closeAddressForm();
   });
 
-  it("TC_EXP_020 - Verify user can add a new address", async function () {
+  it("TC_EXP_037 - Verify user can add a new address", async function () {
     await expectedDetailsPage.clickContactDetails();
 
     // ==========================================
@@ -2014,7 +2487,7 @@ console.log("Verified Doc IDs:", docIds);
     console.log("Shared address created:", testAddress.addressLine1);
   });
 
-  it("TC_EXP_021 - Verify Close button closes Add New address form", async function () {
+  it("TC_EXP_038 - Verify Close button closes Add New address form", async function () {
     await expectedDetailsPage.clickContactDetails();
 
     await expectedDetailsPage.clickAddNewAddress();
@@ -2046,7 +2519,7 @@ console.log("Verified Doc IDs:", docIds);
     expect(visible).to.equal(false);
   });
 
-  it("TC_EXP_022 - Verify user can edit the existing address", async function () {
+  it("TC_EXP_039 - Verify user can edit the existing address", async function () {
     await expectedDetailsPage.clickContactDetails();
 
     console.log("\n========== TC_EXP_030 - EDIT ADDRESS ==========");
@@ -2110,7 +2583,7 @@ console.log("Verified Doc IDs:", docIds);
     console.log("Shared address is now:", testAddress.addressLine1);
   });
 
-  it("TC_EXP_023 - Verify address can be set as Default Shipping", async function () {
+  it("TC_EXP_040 - Verify address can be set as Default Shipping", async function () {
     await expectedDetailsPage.clickContactDetails();
 
     console.log("\n========== TC_EXP_031 - DEFAULT SHIPPING ==========");
@@ -2154,7 +2627,7 @@ console.log("Verified Doc IDs:", docIds);
     expect(selected).to.equal(true);
   });
 
-  it("TC_EXP_024 - Verify address can be set as Default Billing", async function () {
+  it("TC_EXP_041 - Verify address can be set as Default Billing", async function () {
     await expectedDetailsPage.clickContactDetails();
 
     console.log("\n========== TC_EXP_032 - DEFAULT BILLING ==========");
@@ -2209,7 +2682,7 @@ console.log("Verified Doc IDs:", docIds);
     expect(selected).to.equal(true);
   });
 
-  it("TC_EXP_025 - Verify user can delete the existing address", async function () {
+  it("TC_EXP_042 - Verify user can delete the existing address", async function () {
     await expectedDetailsPage.clickContactDetails();
 
     console.log("\n========== TC_EXP_033 - DELETE ADDRESS ==========");
@@ -2241,7 +2714,7 @@ console.log("Verified Doc IDs:", docIds);
     updatedAddress = null;
   });
 
-  it("TC_EXP_026 - Verify Other Details", async function () {
+  it("TC_EXP_043 - Verify Other Details", async function () {
     const text = await expectedDetailsPage.verifyOtherDetails();
 
     expect(text).to.be.a("string");
@@ -2249,7 +2722,7 @@ console.log("Verified Doc IDs:", docIds);
     expect(text.length).to.be.greaterThan(0);
   });
 
-  it("TC_EXP_027 - Verify Tracking Details", async function () {
+  it("TC_EXP_044 - Verify Tracking Details", async function () {
     const text = await expectedDetailsPage.verifyTrackingDetails();
 
     expect(text).to.be.a("string");
@@ -2257,9 +2730,4 @@ console.log("Verified Doc IDs:", docIds);
     expect(text.length).to.be.greaterThan(0);
   });
 
-  after(async function () {
-    if (driver) {
-      await driver.quit();
-    }
-  });
 });
