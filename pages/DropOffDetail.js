@@ -686,46 +686,17 @@ class DropOffDetail {
     return this.waitForPanelTotal("div.col-md-6");
   }
 
-  async getCompletedDocumentCount() {
-    await this.waitForLoadingToFinish();
 
-    return await this.driver.wait(
-      async () => {
-        const count = await this.driver.executeScript(() => {
-          const headings = [...document.querySelectorAll("strong span")];
-          const heading = headings.find(
-            (el) => el.textContent.trim() === "Completed",
-          );
+async getCompletedDocumentCount() {
+  await this.waitForLoadingToFinish(60000);
 
-          if (!heading) return null;
+  const count = await this.getSectionTotal("Completed");
 
-          // Find the Completed section containing its heading.
-          let section = heading;
-          while (section && section !== document.body) {
-            const text = section.innerText || "";
+  console.log(`✓ Completed document count: ${count}`);
 
-            if (
-              /Total\s*:\s*[\d,]+/.test(text) &&
-              section.querySelector("table")
-            ) {
-              const match = text.match(/Total\s*:\s*([\d,]+)/);
-              if (match) {
-                return Number(match[1].replace(/,/g, ""));
-              }
-            }
+  return count;
+}
 
-            section = section.parentElement;
-          }
-
-          return null;
-        });
-
-        return count;
-      },
-      30000,
-      "Completed document count did not load.",
-    );
-  }
 
   async getNoDocumentsMessageIfPresent() {
     return await this.driver.executeScript(() => {
@@ -795,54 +766,54 @@ class DropOffDetail {
     await this.waitForLoadingToFinish();
   }
 
-  // async getSectionTotal(sectionName) {
-  //     const sectionConfig = {
-  //         "DropOff Queue": {
-  //             container: "dropOff"
-  //         },
-  //         "Courier": {
-  //             container: "courier"
-  //         },
-  //         "Completed": {
-  //             container: "completed"
-  //         }
-  //     };
+  async getSectionTotal(sectionName) {
+      const sectionConfig = {
+          "DropOff Queue": {
+              container: "dropOff"
+          },
+          "Courier": {
+              container: "courier"
+          },
+          "Completed": {
+              container: "completed"
+          }
+      };
 
-  //     const config = sectionConfig[sectionName];
+      const config = sectionConfig[sectionName];
 
-  //     if (!config) {
-  //         throw new Error(`Unknown DropOff section: ${sectionName}`);
-  //     }
+      if (!config) {
+          throw new Error(`Unknown DropOff section: ${sectionName}`);
+      }
 
-  //     // These names match the ng-show sections shown in DevTools.
-  //     const totalLocator = By.xpath(
-  //         `//div[@ng-show='${config.container} != null']` +
-  //         "//strong[contains(@class,'ng-binding')][1]"
-  //     );
+      // These names match the ng-show sections shown in DevTools.
+      const totalLocator = By.xpath(
+          `//div[@ng-show='${config.container} != null']` +
+          "//strong[contains(@class,'ng-binding')][1]"
+      );
 
-  //     const totalElement = await this.driver.wait(
-  //         until.elementLocated(totalLocator),
-  //         15000,
-  //         `${sectionName} total was not found.`
-  //     );
+      const totalElement = await this.driver.wait(
+          until.elementLocated(totalLocator),
+          15000,
+          `${sectionName} total was not found.`
+      );
 
-  //     await this.driver.wait(
-  //         until.elementIsVisible(totalElement),
-  //         10000,
-  //         `${sectionName} total is not visible.`
-  //     );
+      await this.driver.wait(
+          until.elementIsVisible(totalElement),
+          10000,
+          `${sectionName} total is not visible.`
+      );
 
-  //     const totalText = (await totalElement.getText()).trim();
-  //     const total = Number(totalText.replace(/,/g, ""));
+      const totalText = (await totalElement.getText()).trim();
+      const total = Number(totalText.replace(/,/g, ""));
 
-  //     if (!Number.isFinite(total)) {
-  //         throw new Error(
-  //             `Invalid total for ${sectionName}: "${totalText}"`
-  //         );
-  //     }
+      if (!Number.isFinite(total)) {
+          throw new Error(
+              `Invalid total for ${sectionName}: "${totalText}"`
+          );
+      }
 
-  //     return total;
-  // }
+      return total;
+  }
 
   // =========================================================
   // DOCUMENT CATEGORY FILTER
@@ -911,52 +882,8 @@ class DropOffDetail {
   //   console.log(`✓ Selected Document Category: ${categoryName}`);
   // }
 
-  async getSectionTotal(sectionName) {
-    const sectionSelectors = {
-      "DropOff Queue": "div[ng-show='dropOff != null']",
-      Courier: "div.courier",
-      Completed: "div.completed-docs",
-    };
 
-    const selector = sectionSelectors[sectionName];
-
-    if (!selector) {
-      throw new Error(`Unknown section: ${sectionName}`);
-    }
-
-    const section = await this.driver.wait(
-      until.elementLocated(By.css(selector)),
-      30000,
-      `${sectionName} panel was not found.`,
-    );
-
-    await this.driver.wait(
-      until.elementIsVisible(section),
-      30000,
-      `${sectionName} panel is not visible.`,
-    );
-
-    // Wait until the panel displays its Total count.
-    const total = await this.driver.wait(
-      async () => {
-        const panelText = await section.getText();
-
-        const match = panelText.match(/\bTotal\s*:\s*([\d,]+)/i);
-
-        if (!match) {
-          return null;
-        }
-
-        return Number(match[1].replace(/,/g, ""));
-      },
-      30000,
-      `${sectionName} Total count did not load.`,
-    );
-
-    console.log(`${sectionName} Total: ${total}`);
-
-    return total;
-  }
+  
 
   async selectDocumentCategory(categoryName) {
     await this.waitForLoadingToFinish();
@@ -1041,47 +968,6 @@ class DropOffDetail {
       30000,
       "DropOff Queue total did not become visible.",
     );
-  }
-
-  async getSectionTotal(sectionName) {
-    const sectionConfig = {
-      "DropOff Queue": "dropOff",
-      Courier: "courier",
-      Completed: "completed",
-    };
-
-    const container = sectionConfig[sectionName];
-
-    if (!container) {
-      throw new Error(`Unknown section: ${sectionName}`);
-    }
-
-    const totalLocator = By.xpath(
-      `//div[@ng-show='${container} != null']` +
-        "//strong[contains(@class,'ng-binding')]",
-    );
-
-    const totalElement = await this.driver.wait(
-      until.elementLocated(totalLocator),
-      30000,
-      `${sectionName} total was not found.`,
-    );
-
-    await this.driver.wait(
-      until.elementIsVisible(totalElement),
-      15000,
-      `${sectionName} total is not visible.`,
-    );
-
-    const totalText = (await totalElement.getText()).trim().replace(/,/g, "");
-
-    const total = Number(totalText);
-
-    if (!Number.isFinite(total)) {
-      throw new Error(`Invalid ${sectionName} total: "${totalText}"`);
-    }
-
-    return total;
   }
 
   // =========================================================
@@ -1438,28 +1324,64 @@ class DropOffDetail {
   // }
 
   // Check whether an Order ID exists in a specific panel.
-  async isOrderInPanel(panelLocator, orderId) {
-    const panel = await this.driver.findElement(panelLocator);
+  // async isOrderInPanel(panelLocator, orderId) {
+  //   const panel = await this.driver.findElement(panelLocator);
 
-    const rows = await panel.findElements(By.xpath(".//tbody/tr"));
+  //   const rows = await panel.findElements(By.xpath(".//tbody/tr"));
 
-    for (const row of rows) {
-      const rowText = await row.getText();
+  //   for (const row of rows) {
+  //     const rowText = await row.getText();
 
-      // Match the exact Order ID, not a partial match.
-      const cells = await row.findElements(By.xpath("./td"));
+  //     // Match the exact Order ID, not a partial match.
+  //     const cells = await row.findElements(By.xpath("./td"));
 
-      for (const cell of cells) {
-        const cellText = (await cell.getText()).trim();
+  //     for (const cell of cells) {
+  //       const cellText = (await cell.getText()).trim();
 
-        if (cellText === String(orderId)) {
-          return true;
-        }
-      }
+  //       if (cellText === String(orderId)) {
+  //         return true;
+  //       }
+  //     }
+  //   }
+
+  //   return false;
+  // }
+
+
+
+async isOrderInPanel(panelLocator, orderId) {
+  const expectedId = String(orderId).trim();
+
+  const panels = await this.driver.findElements(panelLocator);
+
+  for (const panel of panels) {
+    if (!(await panel.isDisplayed().catch(() => false))) {
+      continue;
     }
 
-    return false;
+    const cells = await panel.findElements(
+      By.css("td.orderIdCol, tbody td")
+    );
+
+    for (const cell of cells) {
+      try {
+        const cellText = (await cell.getText()).trim();
+        const title = (
+          (await cell.getAttribute("title")) || ""
+        ).trim();
+
+        if (cellText === expectedId || title === expectedId) {
+          return true;
+        }
+      } catch (error) {
+        // The table may be updating; skip stale cells.
+      }
+    }
   }
+
+  return false;
+}
+
 
   async waitForOrderInPanelWithRefresh(panelLocator, orderId, waitSeconds = 5) {
     // First wait for the application to update.
