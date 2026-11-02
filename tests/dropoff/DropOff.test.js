@@ -402,8 +402,7 @@ it("TC_DROPOFF_008 - Verify Completed Print Docs based on document availability"
 
     
 
-it(
-    "TC_DROPOFF_009 - Verify DropOff Queue, Courier and Completed totals for each document type",
+it("TC_DROPOFF_009 - Verify DropOff Queue, Courier and Completed totals for each document type",
     async function () {
         this.timeout(300000);
 
@@ -466,8 +465,7 @@ it(
 // TC_DROPOFF_010 - Verify totals for each Document Category
 // ============================================================
  
-it(
-    "TC_DROPOFF_010 - Verify DropOff Queue, Courier and Completed totals for each document category",
+it("TC_DROPOFF_010 - Verify DropOff Queue, Courier and Completed totals for each document category",
     async function () {
         this.timeout(300000);
 
@@ -525,8 +523,7 @@ it(
 // TC_DROPOFF_011 - Verify totals for each Stop filter
 // ============================================================
 
-it(
-    "TC_DROPOFF_011 - Verify DropOff Queue, Courier and Completed totals for each Stop",
+it("TC_DROPOFF_011 - Verify DropOff Queue, Courier and Completed totals for each Stop",
     async function () {
         this.timeout(600000);
 
@@ -591,8 +588,7 @@ it(
     }
 );
 
-it(
-  "TC_DROPOFF_012 - Verify Order IDs 263059 and 263061 in DropOff sections",
+it("TC_DROPOFF_012 - Verify Order IDs 263059 and 263061 in DropOff sections",
   async function () {
     this.timeout(180000);
 
@@ -695,8 +691,7 @@ it(
   
     
     
-it(
-    "TC_DROPOFF_014 - Verify order moves from DropOff Queue to Courier and back",
+it("TC_DROPOFF_014 - Verify order moves from DropOff Queue to Courier and back",
     async function () {
         // Clean up the date filter before the next test.
     
@@ -823,8 +818,7 @@ it(
     }
     );
     
-    it(
-    "TC_DROPOFF_015 - Verify order moves from DropOff Queue to Courier, Completed and back",
+    it("TC_DROPOFF_015 - Verify order moves from DropOff Queue to Courier, Completed and back",
     async function () {
         this.timeout(240000);
 
@@ -918,8 +912,7 @@ await dropOffDetail.searchOrderId("");
 // TC_DROPOFF_013 - Verify section totals after selecting a date
 // ============================================================
 
-it(
-  "TC_DROPOFF_013 - Verify document counts for 14-10-2026",
+it("TC_DROPOFF_013 - Verify document counts for 14-10-2026",
   async function () {
       this.timeout(180000);
 

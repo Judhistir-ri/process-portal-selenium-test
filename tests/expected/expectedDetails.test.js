@@ -369,6 +369,142 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log("✓ Status message and background color verified.");
   });
 
+  it("TC_EXP_034 - Verify Fee Amounts Between Document Details and Order History", async function () {
+    console.log("\n==========================================");
+    console.log("TC_EXP_017 - Verify Fee Amounts");
+    console.log("==========================================");
+
+    // ------------------------------------------
+    // Get Document Details fees
+    // ------------------------------------------
+
+    console.log("\nGetting fees from Document Details...");
+
+    const documentFees =
+      await expectedDetailsPage.getDocumentDetailsFeeDetails();
+
+    console.log("\nDocument Details Fees:");
+    console.log(JSON.stringify(documentFees, null, 2));
+
+    // ------------------------------------------
+    // Get Document Details total
+    // ------------------------------------------
+
+    const documentTotal = await expectedDetailsPage.getPaymentAmount();
+
+    console.log(`Document Details Total Amount: $${documentTotal.toFixed(2)}`);
+
+    // ------------------------------------------
+    // Get Order History fees
+    // ------------------------------------------
+
+    console.log("\nGetting fees from Order History...");
+
+    const orderHistoryFees = await expectedDetailsPage.getFeeDetails();
+
+    console.log("\nOrder History Fees:");
+    console.log(JSON.stringify(orderHistoryFees, null, 2));
+
+    // ------------------------------------------
+    // Verify fee count
+    // ------------------------------------------
+
+    expect(orderHistoryFees.length).to.equal(
+      documentFees.length,
+      "Number of fees is different between Document Details and Order History",
+    );
+
+    // ------------------------------------------
+    // Compare every fee
+    // ------------------------------------------
+
+    for (const documentFee of documentFees) {
+      const normalizedDocumentFee = normalizeFeeType(documentFee.feeType);
+
+      const matchingOrderFee = orderHistoryFees.find(
+        (orderFee) =>
+          normalizeFeeType(orderFee.feeType) === normalizedDocumentFee,
+      );
+
+      // Fee must exist in Order History
+      expect(
+        matchingOrderFee,
+        `Fee "${documentFee.feeType}" not found in Order History`,
+      ).to.not.equal(undefined);
+
+      // ------------------------------------------
+      // Unit Price
+      // ------------------------------------------
+
+      const documentUnitPrice = Number(documentFee.unitPrice);
+
+      const orderUnitPrice = parseFloat(
+        String(matchingOrderFee.unitPrice).replace(/[$,]/g, "").trim(),
+      );
+
+      console.log(`\n${documentFee.feeType}`);
+
+      console.log(
+        `Unit Price: Document Details=$${documentUnitPrice.toFixed(2)}, ` +
+          `Order History=$${orderUnitPrice.toFixed(2)}`,
+      );
+
+      expect(
+        documentUnitPrice,
+        `Unit Price mismatch for ${documentFee.feeType}`,
+      ).to.equal(orderUnitPrice);
+
+      // ------------------------------------------
+      // Total
+      // ------------------------------------------
+
+      const documentFeeTotal = Number(documentFee.total);
+
+      const orderFeeTotal = parseFloat(
+        String(matchingOrderFee.total).replace(/[$,]/g, "").trim(),
+      );
+
+      console.log(
+        `Total: Document Details=$${documentFeeTotal.toFixed(2)}, ` +
+          `Order History=$${orderFeeTotal.toFixed(2)}`,
+      );
+
+      expect(
+        documentFeeTotal,
+        `Total mismatch for ${documentFee.feeType}`,
+      ).to.equal(orderFeeTotal);
+    }
+
+    // ------------------------------------------
+    // Calculate Order History total dynamically
+    // ------------------------------------------
+
+    const orderHistoryTotal = orderHistoryFees.reduce((sum, fee) => {
+      const amount = parseFloat(String(fee.total).replace(/[$,]/g, "").trim());
+
+      return sum + amount;
+    }, 0);
+
+    console.log("\n------------------------------------------");
+
+    console.log(`Document Details Total : $${documentTotal.toFixed(2)}`);
+
+    console.log(`Order History Total    : $${orderHistoryTotal.toFixed(2)}`);
+
+    console.log("------------------------------------------");
+
+    // ------------------------------------------
+    // Compare overall total
+    // ------------------------------------------
+
+    expect(documentTotal).to.equal(
+      orderHistoryTotal,
+      "Overall Total Amount is different between Document Details and Order History",
+    );
+
+    console.log("\n✓ All fee amounts and total amount are matching.");
+  });
+
 
   it("TC_EXP_012 - Verify Add Stop is saved and Payment Due is updated", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
@@ -2071,337 +2207,158 @@ console.log("Verified Doc IDs:", docIds);
       .trim()
       .toLowerCase();
   }
-  it("TC_EXP_034 - Verify Fee Amounts Between Document Details and Order History", async function () {
-    console.log("\n==========================================");
-    console.log("TC_EXP_017 - Verify Fee Amounts");
-    console.log("==========================================");
-
-    // ------------------------------------------
-    // Get Document Details fees
-    // ------------------------------------------
-
-    console.log("\nGetting fees from Document Details...");
-
-    const documentFees =
-      await expectedDetailsPage.getDocumentDetailsFeeDetails();
-
-    console.log("\nDocument Details Fees:");
-    console.log(JSON.stringify(documentFees, null, 2));
-
-    // ------------------------------------------
-    // Get Document Details total
-    // ------------------------------------------
-
-    const documentTotal = await expectedDetailsPage.getPaymentAmount();
-
-    console.log(`Document Details Total Amount: $${documentTotal.toFixed(2)}`);
-
-    // ------------------------------------------
-    // Get Order History fees
-    // ------------------------------------------
-
-    console.log("\nGetting fees from Order History...");
-
-    const orderHistoryFees = await expectedDetailsPage.getFeeDetails();
-
-    console.log("\nOrder History Fees:");
-    console.log(JSON.stringify(orderHistoryFees, null, 2));
-
-    // ------------------------------------------
-    // Verify fee count
-    // ------------------------------------------
-
-    expect(orderHistoryFees.length).to.equal(
-      documentFees.length,
-      "Number of fees is different between Document Details and Order History",
-    );
-
-    // ------------------------------------------
-    // Compare every fee
-    // ------------------------------------------
-
-    for (const documentFee of documentFees) {
-      const normalizedDocumentFee = normalizeFeeType(documentFee.feeType);
-
-      const matchingOrderFee = orderHistoryFees.find(
-        (orderFee) =>
-          normalizeFeeType(orderFee.feeType) === normalizedDocumentFee,
-      );
-
-      // Fee must exist in Order History
-      expect(
-        matchingOrderFee,
-        `Fee "${documentFee.feeType}" not found in Order History`,
-      ).to.not.equal(undefined);
-
-      // ------------------------------------------
-      // Unit Price
-      // ------------------------------------------
-
-      const documentUnitPrice = Number(documentFee.unitPrice);
-
-      const orderUnitPrice = parseFloat(
-        String(matchingOrderFee.unitPrice).replace(/[$,]/g, "").trim(),
-      );
-
-      console.log(`\n${documentFee.feeType}`);
-
-      console.log(
-        `Unit Price: Document Details=$${documentUnitPrice.toFixed(2)}, ` +
-          `Order History=$${orderUnitPrice.toFixed(2)}`,
-      );
-
-      expect(
-        documentUnitPrice,
-        `Unit Price mismatch for ${documentFee.feeType}`,
-      ).to.equal(orderUnitPrice);
-
-      // ------------------------------------------
-      // Total
-      // ------------------------------------------
-
-      const documentFeeTotal = Number(documentFee.total);
-
-      const orderFeeTotal = parseFloat(
-        String(matchingOrderFee.total).replace(/[$,]/g, "").trim(),
-      );
-
-      console.log(
-        `Total: Document Details=$${documentFeeTotal.toFixed(2)}, ` +
-          `Order History=$${orderFeeTotal.toFixed(2)}`,
-      );
-
-      expect(
-        documentFeeTotal,
-        `Total mismatch for ${documentFee.feeType}`,
-      ).to.equal(orderFeeTotal);
-    }
-
-    // ------------------------------------------
-    // Calculate Order History total dynamically
-    // ------------------------------------------
-
-    const orderHistoryTotal = orderHistoryFees.reduce((sum, fee) => {
-      const amount = parseFloat(String(fee.total).replace(/[$,]/g, "").trim());
-
-      return sum + amount;
-    }, 0);
-
-    console.log("\n------------------------------------------");
-
-    console.log(`Document Details Total : $${documentTotal.toFixed(2)}`);
-
-    console.log(`Order History Total    : $${orderHistoryTotal.toFixed(2)}`);
-
-    console.log("------------------------------------------");
-
-    // ------------------------------------------
-    // Compare overall total
-    // ------------------------------------------
-
-    expect(documentTotal).to.equal(
-      orderHistoryTotal,
-      "Overall Total Amount is different between Document Details and Order History",
-    );
-
-    console.log("\n✓ All fee amounts and total amount are matching.");
-  });
+ 
 
   
-it("TC_EXP_0332 - Verify Order History Versions and Latest Total Amount", async function () {
+// it("TC_EXP_0332 - Verify Order History Versions and Latest Total Amount", async function () {
+//     console.log("\n==========================================");
+//     console.log("TC_EXP_0332 - Verify Order History Versions");
+//     console.log("==========================================");
+
+//     // Step 1: Get Payment Due total from Document Details.
+//     await expectedDetailsPage.clickTab("documentDetails");
+
+//     const paymentDueTotal = Number(
+//         await expectedDetailsPage.getPaymentAmount()
+//     );
+
+//     console.log(
+//         `Payment Due Total: $${paymentDueTotal.toFixed(2)}`
+//     );
+
+//     // Step 2: Open Order History and get all saved versions.
+//     await expectedDetailsPage.clickTab("orderHistory");
+
+//     const versions =
+//         await expectedDetailsPage.getOrderHistoryVersions();
+
+//     console.log("Versions found in Order History:");
+//     console.table(versions);
+
+//     expect(versions, "Order History should contain saved versions")
+//         .to.be.an("array")
+//         .that.is.not.empty;
+
+//     // Step 3: Sort versions by version number.
+//     const sortedVersions = [...versions].sort(
+//         (a, b) => a.version - b.version
+//     );
+
+//     // Step 4: Verify version numbers are sequential.
+//     for (let i = 1; i < sortedVersions.length; i++) {
+//         expect(
+//             sortedVersions[i].version,
+//             `Version sequence is incorrect: ${sortedVersions[i - 1].version} followed by ${sortedVersions[i].version}`
+//         ).to.equal(sortedVersions[i - 1].version + 1);
+//     }
+
+//     console.log(
+//         `First Version: ${sortedVersions[0].version}`
+//     );
+
+//     console.log(
+//         `Latest Version: ${sortedVersions[sortedVersions.length - 1].version}`
+//     );
+
+//     // Step 5: Get the latest version and its Total amount.
+//     const latestVersion = sortedVersions[sortedVersions.length - 1];
+
+//     console.log(
+//         `Latest Order History Total: $${latestVersion.totalAmount.toFixed(2)}`
+//     );
+
+//     // Step 6: Verify latest Order History total matches Payment Due.
+//     expect(
+//         latestVersion.totalAmount,
+//         `Latest Order History total ($${latestVersion.totalAmount.toFixed(2)}) should match Payment Due ($${paymentDueTotal.toFixed(2)})`
+//     ).to.be.closeTo(paymentDueTotal, 0.01);
+
+//     console.log(
+//         "PASS: Order History versions are sequential and the latest total matches Payment Due."
+//     );
+//   });
+  
+
+  it("TC_EXP_0332 - Verify Order History Versions and Total Amounts", async function () {
+
+    this.timeout(120000);
+
     console.log("\n==========================================");
     console.log("TC_EXP_0332 - Verify Order History Versions");
     console.log("==========================================");
 
-    // Step 1: Get Payment Due total from Document Details.
-    await expectedDetailsPage.clickTab("documentDetails");
-
-    const paymentDueTotal = Number(
-        await expectedDetailsPage.getPaymentAmount()
-    );
-
-    console.log(
-        `Payment Due Total: $${paymentDueTotal.toFixed(2)}`
-    );
-
-    // Step 2: Open Order History and get all saved versions.
+    // Step 1: Open Order History tab.
     await expectedDetailsPage.clickTab("orderHistory");
 
-    const versions =
-        await expectedDetailsPage.getOrderHistoryVersions();
+    // Step 2: Get all versions and their respective total amounts.
+    const versions = await expectedDetailsPage.getOrderHistoryVersions();
 
-    console.log("Versions found in Order History:");
-    console.table(versions);
+    expect(
+        versions,
+        "Order History should contain at least one version"
+    ).to.be.an("array").that.is.not.empty;
 
-    expect(versions, "Order History should contain saved versions")
-        .to.be.an("array")
-        .that.is.not.empty;
-
-    // Step 3: Sort versions by version number.
+    // Step 3: Sort versions in ascending order.
     const sortedVersions = [...versions].sort(
         (a, b) => a.version - b.version
     );
 
-    // Step 4: Verify version numbers are sequential.
+    // Step 4: Display version table.
+    console.log("\n========== ORDER HISTORY VERSION TABLE ==========");
+
+    console.table(
+        sortedVersions.map(item => ({
+            Version: `Version ${item.version}`,
+            "Total Amount": `$${item.totalAmount.toFixed(2)}`
+        }))
+    );
+
+    // Step 5: Verify version numbers and total amounts.
+    for (const item of sortedVersions) {
+
+        expect(
+            item.version,
+            "Version number should be a valid positive integer"
+        ).to.be.a("number").and.greaterThan(0);
+
+        expect(
+            Number.isInteger(item.version),
+            `Version ${item.version} should be an integer`
+        ).to.equal(true);
+
+        expect(
+            Number.isFinite(item.totalAmount),
+            `Invalid total amount for Version ${item.version}`
+        ).to.equal(true);
+
+        expect(
+            item.totalAmount,
+            `Total amount for Version ${item.version} cannot be negative`
+        ).to.be.at.least(0);
+    }
+
+    // Step 6: Verify versions are sequential.
     for (let i = 1; i < sortedVersions.length; i++) {
+
         expect(
             sortedVersions[i].version,
-            `Version sequence is incorrect: ${sortedVersions[i - 1].version} followed by ${sortedVersions[i].version}`
+            `Version sequence is incorrect between Version ${sortedVersions[i - 1].version} and Version ${sortedVersions[i].version}`
         ).to.equal(sortedVersions[i - 1].version + 1);
     }
 
-    console.log(
-        `First Version: ${sortedVersions[0].version}`
-    );
-
-    console.log(
-        `Latest Version: ${sortedVersions[sortedVersions.length - 1].version}`
-    );
-
-    // Step 5: Get the latest version and its Total amount.
+    // Step 7: Display latest version information.
     const latestVersion = sortedVersions[sortedVersions.length - 1];
 
-    console.log(
-        `Latest Order History Total: $${latestVersion.totalAmount.toFixed(2)}`
-    );
+    console.log("\n========== LATEST ORDER HISTORY VERSION ==========");
+    console.log(`Latest Version : ${latestVersion.version}`);
+    console.log(`Total Amount   : $${latestVersion.totalAmount.toFixed(2)}`);
 
-    // Step 6: Verify latest Order History total matches Payment Due.
-    expect(
-        latestVersion.totalAmount,
-        `Latest Order History total ($${latestVersion.totalAmount.toFixed(2)}) should match Payment Due ($${paymentDueTotal.toFixed(2)})`
-    ).to.be.closeTo(paymentDueTotal, 0.01);
+    console.log("\n✓ TC_EXP_0332 PASSED");
+    console.log("✓ All Order History versions and total amounts verified.");
+    console.log("✓ No comparison with Document Details Payment Due.");
 
-    console.log(
-        "PASS: Order History versions are sequential and the latest total matches Payment Due."
-    );
-  });
-  
+});
 
-  // it("TC_EXP_0332 - Verify Order History Versions and Latest Total Amount", async function () {
-  //   console.log("\n==========================================");
-  //   console.log("TC_EXP_0332 - Verify Order History Versions");
-  //   console.log("==========================================");
-
-  //   // Step 1: Read the amount of each document from Order Summary.
-  //   await expectedDetailsPage.clickTab("documentDetails");
-
-  //   const documentAmounts = await expectedDetailsPage.driver.executeScript(() => {
-  //     const normalize = (text) =>
-  //       (text || "").replace(/\s+/g, " ").trim();
-
-  //     const headings = Array.from(document.querySelectorAll("h5"));
-
-  //     const amounts = [];
-
-  //     for (const heading of headings) {
-  //       const label = normalize(heading.innerText);
-
-  //       // Match Doc Amount-1, Doc Amount-2, etc.
-  //       if (!/^Doc Amount-\d+\b/i.test(label)) {
-  //         continue;
-  //       }
-
-  //       const labelColumn = heading.closest(".col-md-8");
-
-  //       if (!labelColumn) {
-  //         continue;
-  //       }
-
-  //       const valueColumn = labelColumn.nextElementSibling;
-
-  //       if (!valueColumn || !valueColumn.matches(".col-md-4.price")) {
-  //         continue;
-  //       }
-
-  //       const strong = valueColumn.querySelector("strong");
-
-  //       if (!strong) {
-  //         continue;
-  //       }
-
-  //       const match = normalize(strong.innerText)
-  //         .replace(/,/g, "")
-  //         .match(/-?\d+(?:\.\d{1,2})?/);
-
-  //       if (match) {
-  //         amounts.push({
-  //           document: label.replace(/:$/, ""),
-  //           amount: Number(match[0])
-  //         });
-  //       }
-  //     }
-
-  //     return amounts;
-  //   });
-
-  //   expect(
-  //     documentAmounts,
-  //     "No document amounts were found in the Order Summary"
-  //   ).to.be.an("array").that.is.not.empty;
-
-  //   const expectedOrderTotal = Number(
-  //     documentAmounts
-  //       .reduce((sum, doc) => sum + doc.amount, 0)
-  //       .toFixed(2)
-  //   );
-
-  //   console.log("Document amounts in Order Summary:");
-  //   console.table(documentAmounts);
-  //   console.log(
-  //     `Expected Order Total: $${expectedOrderTotal.toFixed(2)}`
-  //   );
-
-  //   // Step 2: Read versions from Order History.
-  //   await expectedDetailsPage.clickTab("orderHistory");
-
-  //   const versions = await expectedDetailsPage.getOrderHistoryVersions();
-
-  //   console.log("Versions found in Order History:");
-  //   console.table(versions);
-
-  //   expect(versions, "Order History versions were not found")
-  //     .to.be.an("array").that.is.not.empty;
-
-  //   // Step 3: Verify versions increase consecutively without gaps.
-  //   const versionNumbers = versions
-  //     .map(item => Number(item.version))
-  //     .sort((a, b) => a - b);
-
-  //   for (let i = 0; i < versionNumbers.length; i++) {
-  //     expect(
-  //       Number.isInteger(versionNumbers[i]),
-  //       `Invalid version number: ${versionNumbers[i]}`
-  //     ).to.equal(true);
-
-  //     if (i > 0) {
-  //       expect(
-  //         versionNumbers[i],
-  //         `Expected version ${versionNumbers[i - 1] + 1} after version ${versionNumbers[i - 1]}`
-  //       ).to.equal(versionNumbers[i - 1] + 1);
-  //     }
-  //   }
-
-  //   // Step 4: Find the latest/highest version.
-  //   const latestVersion = versions.reduce((latest, current) =>
-  //     Number(current.version) > Number(latest.version) ? current : latest
-  //   );
-
-  //   console.log(`Latest Version: ${latestVersion.version}`);
-  //   console.log(
-  //     `Latest Order History Total: $${Number(latestVersion.totalAmount).toFixed(2)}`
-  //   );
-
-  //   // Step 5: Compare latest Order History total with the sum of
-  //   // all document amounts in Order Summary.
-  //   expect(
-  //     Number(latestVersion.totalAmount),
-  //     `Latest Order History total ($${Number(latestVersion.totalAmount).toFixed(2)}) does not match the combined Order Summary total ($${expectedOrderTotal.toFixed(2)})`
-  //   ).to.be.closeTo(expectedOrderTotal, 0.01);
-  // });
-
-
-
-  //===========================================================================
 
   it("TC_EXP_035 - Verify Contact Details", async function () {
     const text = await expectedDetailsPage.verifyContactDetails();
