@@ -306,8 +306,7 @@ it("TC_PICKUP_005 - Verify Pickup Queue and Completed totals for each document f
 // TC_PICKUP_006 - Verify totals for each Document Category
 // ============================================================
 
-it(
-  "TC_PICKUP_006 - Verify Pickup Queue and Completed totals for each document category",
+it("TC_PICKUP_006 - Verify Pickup Queue and Completed totals for each document category",
   async function () {
     this.timeout(300000);
 
@@ -365,8 +364,7 @@ it(
   }
     );
     
-it(
-    "TC_PICKUP_007 - Verify Pickup Queue and Completed totals for each Stop",
+it("TC_PICKUP_007 - Verify Pickup Queue and Completed totals for each Stop",
     async function () {
         this.timeout(600000);
 
@@ -413,8 +411,7 @@ it(
     );
     
     
-it(
-  "TC_PICKUP_008 - Search Order IDs using Filter Anything and verify Order ID, Doc ID, and Country",
+it("TC_PICKUP_008 - Search Order IDs using Filter Anything and verify Order ID, Doc ID, and Country",
   async function () {
     this.timeout(180000);
 

@@ -46,11 +46,21 @@ describe("Ship to Customer - Export and Print Docs Functional Tests", function (
         }
     });
 
+    // function getDownloadDir() {
+    //     return path.join(
+    //         process.env.USERPROFILE || process.cwd(),
+    //         "Downloads"
+    //     );
+    // }
     function getDownloadDir() {
-        return path.join(
-            process.env.USERPROFILE || process.cwd(),
-            "Downloads"
-        );
+        const downloadDir =
+            process.env.DOWNLOAD_DIR ||
+            path.join(os.homedir(), "Downloads");
+    
+        // Create the folder if it does not exist.
+        fs.mkdirSync(downloadDir, { recursive: true });
+    
+        return downloadDir;
     }
 
     async function verifyExport(section, clickExport, testName) {
@@ -233,8 +243,7 @@ describe("Ship to Customer - Export and Print Docs Functional Tests", function (
     });
 
     
-it(
-    "TC_SHIP_005 - Verify Ready to Ship and Completed totals for each document filter",
+it("TC_SHIP_005 - Verify Ready to Ship and Completed totals for each document filter",
     async function () {
         this.timeout(600000);
 
@@ -344,169 +353,7 @@ it("TC_SHIP_006 - Verify Ready to Ship and Completed totals for each category", 
 });
 
 
-// it(
-//     "TC_SHIP_007 - Search Order IDs 263097, 263098 and Doc ID 99824 in Filter Anything",
-//     async function () {
-//         this.timeout(240000);
-
-//         const searchCases = [
-//             {
-//                 type: "Order ID",
-//                 value: "263097",
-//                 expectedOrderId: "263097",
-//                 expectedDocId: "99824"
-//             },
-//             {
-//                 type: "Order ID",
-//                 value: "263098",
-//                 expectedOrderId: "263098",
-//                 expectedDocId: "99825"
-//             },
-//             {
-//                 type: "Doc ID",
-//                 value: "99824",
-//                 expectedOrderId: "263097",
-//                 expectedDocId: "99824"
-//             }
-//         ];
-
-//         // Confirmed from the browser DOM screenshot.
-//         const searchBoxLocator = By.css(
-//             "input[ng-model='shipToCust']"
-//         );
-
-//         // Wait for the page and its initial data.
-//         await shipPage.waitForPage();
-//         await shipPage.waitForLoadingToFinish(60000);
-
-//         const searchBox = await driver.wait(
-//             until.elementLocated(searchBoxLocator),
-//             30000,
-//             "Filter Anything input was not found."
-//         );
-
-//         await driver.wait(
-//             until.elementIsVisible(searchBox),
-//             15000,
-//             "Filter Anything input is not visible."
-//         );
-
-//         await driver.wait(
-//             until.elementIsEnabled(searchBox),
-//             15000,
-//             "Filter Anything input is not enabled."
-//         );
-
-//         console.log("✓ Filter Anything input is ready.");
-
-//         const results = [];
-
-//         for (const searchCase of searchCases) {
-//             console.log(
-//                 `\n========== Searching ${searchCase.type}: ${searchCase.value} ==========`
-//             );
-
-//             // Clear the previous search and enter the new value.
-//             await searchBox.clear();
-//             await searchBox.sendKeys(searchCase.value);
-
-//             await driver.wait(
-//                 async () => {
-//                     const value = await searchBox.getAttribute("value");
-//                     return value === searchCase.value;
-//                 },
-//                 10000,
-//                 `Could not enter search value: ${searchCase.value}`
-//             );
-
-//             // Find the matching result in the actual rendered tables.
-//             // Do not depend on div.shipToCustomers-docs or
-//             // div.completed-docs, which caused the timeout.
-//             let matchingRowText = "";
-
-//             await driver.wait(
-//                 async () => {
-//                     const rows = await driver.findElements(
-//                         By.css("table tbody tr")
-//                     );
-
-//                     const rowTexts = [];
-
-//                     for (const row of rows) {
-//                         try {
-//                             const visible = await row.isDisplayed();
-
-//                             if (!visible) {
-//                                 continue;
-//                             }
-
-//                             const text = (await row.getText()).trim();
-
-//                             if (
-//                                 text &&
-//                                 !/no documents found/i.test(text)
-//                             ) {
-//                                 rowTexts.push(text);
-//                             }
-//                         } catch (error) {
-//                             // Angular may redraw a row while searching.
-//                             continue;
-//                         }
-//                     }
-
-//                     matchingRowText = rowTexts.find(rowText => {
-//                         return (
-//                             rowText.includes(searchCase.expectedOrderId) &&
-//                             rowText.includes(searchCase.expectedDocId)
-//                         );
-//                     }) || "";
-
-//                     console.log(
-//                         `Rows currently displayed for ${searchCase.value}:`,
-//                         rowTexts
-//                     );
-
-//                     return matchingRowText !== "";
-//                 },
-//                 30000,
-//                 `No matching row found for ${searchCase.type} ${searchCase.value}.`
-//             );
-
-//             console.log("✓ Matching row found:", matchingRowText);
-
-//             expect(
-//                 matchingRowText,
-//                 `Expected Order ID ${searchCase.expectedOrderId} and Doc ID ${searchCase.expectedDocId}`
-//             ).to.include(searchCase.expectedOrderId);
-
-//             expect(matchingRowText).to.include(
-//                 searchCase.expectedDocId
-//             );
-
-//             results.push({
-//                 searchedBy: searchCase.type,
-//                 searchValue: searchCase.value,
-//                 expectedOrderId: searchCase.expectedOrderId,
-//                 expectedDocId: searchCase.expectedDocId,
-//                 actualRow: matchingRowText,
-//                 status: "PASS"
-//             });
-//         }
-
-//         console.log("\n========== Filter Anything Search Results ==========");
-//         console.table(results);
-
-//         expect(results).to.have.lengthOf(searchCases.length);
-
-//         console.log(
-//             "✓ TC_SHIP_007 passed: all three searches returned matching rows."
-//         );
-//     }
-// );
-
-
-it(
-    "TC_SHIP_007 - Search Order IDs 263097, 263098 and Doc ID 99824 in Filter Anything",
+it("TC_SHIP_007 - Search Order IDs 263097, 263098 and Doc ID 99824 in Filter Anything",
     async function () {
         this.timeout(240000);
 
