@@ -27,8 +27,12 @@ class GlobalSearchPage {
             "md-autocomplete input[placeholder='Select User']"
         );
 
-        this.originCountryInput = By.css(
-            "input[placeholder='Select Origin Country']"
+        // this.originCountryInput = By.css(
+        //     "input[placeholder='Select Origin Country']"
+        // );
+
+        this.originCountryInput = By.xpath(
+            "//input[@placeholder='Select Origin Country']"
         );
 
         this.destinationCountryInput = By.css(
@@ -36,8 +40,12 @@ class GlobalSearchPage {
             "input[placeholder*='Select Destination Count']"
         );
 
-        this.descriptionInput = By.css(
-            "input[placeholder='Description']"
+        // this.descriptionInput = By.css(
+        //     "input[placeholder='Description']"
+        // );
+
+        this.descriptionInput = By.xpath(
+            "//input[@ng-model='newDocument.Description']"
         );
 
         this.docIdInput = By.css(
@@ -1136,6 +1144,266 @@ async clearSearchFilters() {
 
     console.log("Search fields cleared.");
 }
+
+// --------------------------------------------------
+// GET GLOBAL SEARCH TABLE DATA
+// --------------------------------------------------
+
+// async getGlobalSearchTableData() {
+//     const rows = await this.driver.findElements(
+//         this.resultsRows
+//     );
+
+//     const documents = [];
+
+//     for (const row of rows) {
+//         if (!(await row.isDisplayed())) {
+//             continue;
+//         }
+
+//         const cells = await row.findElements(
+//             By.css("td")
+//         );
+
+//         const values = [];
+
+//         for (const cell of cells) {
+//             values.push(
+//                 (await cell.getText())
+//                     .replace(/\s+/g, " ")
+//                     .trim()
+//             );
+//         }
+
+//         // Skip rows that do not contain the required columns.
+//         if (values.length < 5) {
+//             continue;
+//         }
+
+//         documents.push({
+//             orderId: values[0],
+//             docId: values[1],
+//             country: values[2],
+//             originCountry: values[3],
+//             customerName: values[4]
+//         });
+//     }
+
+//     return documents;
+// }
+
+async selectOriginCountry(countryName) {
+    console.log(`Selecting Origin Country: ${countryName}`);
+
+    // Step 1: Find and click the Origin Country input.
+    const originInput = await this.waitForVisible(
+        this.originCountryInput,
+        30000
+    );
+
+    await originInput.click();
+
+    // Step 2: Type the country name.
+    await originInput.clear();
+    await originInput.sendKeys(countryName);
+
+    console.log(`Typed Origin Country: ${countryName}`);
+
+    // Step 3: Global XPath targeting the rendered dropdown suggestion across the entire DOM
+    const countryOption = By.xpath(
+        `//ul[contains(@class,'md-autocomplete-suggestions')]//li[//*[normalize-space(.)='${countryName}']] | ` +
+        `//md-virtual-repeat-container//li[//*[normalize-space(.)='${countryName}']]`
+    );
+
+    // Step 4: Wait until the matching suggestion is visible.
+    const option = await this.waitForVisible(
+        countryOption,
+        30000
+    );
+
+    // Step 5: Click the suggestion to select the country.
+    await option.click();
+
+    console.log(`Selected Origin Country: ${countryName}`);
+
+    // Track the field for cleanup.
+    if (typeof this.trackSearchField === "function") {
+        this.trackSearchField(this.originCountryInput);
+    }
+}
+
+async getGlobalSearchTableData() {
+    const rows = await this.driver.findElements(
+        this.resultsRows
+    );
+
+    const documents = [];
+
+    for (const row of rows) {
+        if (!(await row.isDisplayed())) {
+            continue;
+        }
+
+        // Support both standard HTML tables and UI-Grid layouts
+        const cells = await row.findElements(
+            By.css("td, div.ui-grid-cell")
+        );
+
+        const values = [];
+
+        for (const cell of cells) {
+            const text = await cell.getText();
+            values.push(text.replace(/\s+/g, " ").trim());
+        }
+
+        // Skip rows that do not contain the required columns.
+        if (values.length < 5) {
+            continue;
+        }
+
+        documents.push({
+            orderId: values[0],
+            docId: values[1],
+            country: values[2],
+            originCountry: values[3],
+            customerName: values[4]
+        });
+    }
+
+    return documents;
+}
+
+// --------------------------------------------------
+// DESTINATION COUNTRY SEARCH
+// --------------------------------------------------
+
+async selectDestinationCountry(countryName) {
+    console.log(`Selecting Destination Country: ${countryName}`);
+
+    // Step 1: Find and click the Destination Country input field
+    const destInput = await this.waitForVisible(
+        By.css("md-autocomplete[placeholder='Select Destination Country'] input"),
+        30000
+    );
+
+    await destInput.click();
+    await destInput.clear();
+    await destInput.sendKeys(countryName);
+
+    console.log(`Typed Destination Country: ${countryName}`);
+
+    // Step 2: Global XPath targeting the rendered autocomplete suggestion
+    const countryOption = By.xpath(
+        `//ul[contains(@class,'md-autocomplete-suggestions')]//li[//*[normalize-space(.)='${countryName}']] | ` +
+        `//md-virtual-repeat-container//li[//*[normalize-space(.)='${countryName}']]`
+    );
+
+    // Step 3: Wait until the matching suggestion is visible and click
+    const option = await this.waitForVisible(countryOption, 30000);
+    await option.click();
+
+    console.log(`Selected Destination Country: ${countryName}`);
+
+    if (typeof this.trackSearchField === "function") {
+        this.trackSearchField(
+            By.css("md-autocomplete[placeholder='Select Destination Country'] input")
+        );
+    }
+}
+
+// Search by Description
+async searchByDescription(description) {
+    const descriptionField = await this.waitForVisible(
+        this.descriptionInput
+    );
+
+    await descriptionField.clear();
+    await descriptionField.sendKeys(description);
+
+    await this.driver.wait(
+        until.elementIsVisible(descriptionField),
+        10000
+    );
+
+    await this.clickElement(this.searchButton);
+
+    await this.waitForLoadingToFinish();
+}
+
+// Clear only Description
+async clearDescriptionSearch() {
+    const descriptionField = await this.waitForVisible(
+        this.descriptionInput
+    );
+
+    await descriptionField.clear();
+}
+
+/**
+ * Types a Doc Id into the input field.
+ */
+async enterDocId(docId) {
+    console.log(`Entering Doc Id: ${docId}`);
+
+    // Target the Doc Id text input by id or ng-model attribute from screenshot
+    const docInput = await this.waitForVisible(
+        By.css("input#input_7, input[ng-model='newDocument.doc']"),
+        30000
+    );
+
+    await docInput.click();
+    await docInput.clear();
+    await docInput.sendKeys(docId);
+
+    console.log(`Doc Id entered: ${docId}`);
+
+    if (typeof this.trackSearchField === "function") {
+        this.trackSearchField(
+            By.css("input#input_7, input[ng-model='newDocument.doc']")
+        );
+    }
+}
+
+/**
+ * Extracts table data including OrderId, DocId, Country, OriginCountry, 
+ * Customer Name, Contact Person, and Document Type.
+ */
+async getDocIdSearchResults() {
+    const rows = await this.driver.findElements(this.resultsRows);
+    const documents = [];
+
+    for (const row of rows) {
+        if (!(await row.isDisplayed())) {
+            continue;
+        }
+
+        const cells = await row.findElements(By.css("td, div.ui-grid-cell"));
+        const values = [];
+
+        for (const cell of cells) {
+            const text = await cell.getText();
+            values.push(text.replace(/\s+/g, " ").trim());
+        }
+
+        // Must contain at least 7 columns based on table header layout
+        if (values.length < 7) {
+            continue;
+        }
+
+        documents.push({
+            orderId: values[0],
+            docId: values[1],
+            country: values[2],
+            originCountry: values[3],
+            customerName: values[4],
+            contactPerson: values[5],
+            documentType: values[6]
+        });
+    }
+
+    return documents;
+}
+
 
 
 }
