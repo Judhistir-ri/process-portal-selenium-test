@@ -22,7 +22,7 @@ describe("Processor Portal - Global Search Functional Test Cases", function () {
     // --------------------------------------------------
 
     before(async function () {
-        this.timeout(120000);
+        this.timeout(150000);
 
         // Step 1: Initialize WebDriver.
         driver = await getDriver();
@@ -58,6 +58,11 @@ describe("Processor Portal - Global Search Functional Test Cases", function () {
     // --------------------------------------------------
     // TEARDOWN
     // --------------------------------------------------
+    afterEach(async function () {
+        if (globalSearchPage) {
+            await globalSearchPage.clearSearchFilters();
+        }
+    })
 
     after(async function () {
         if (driver) {
@@ -88,69 +93,6 @@ describe("Processor Portal - Global Search Functional Test Cases", function () {
 
         expect(await exportButton.isDisplayed()).to.equal(true);
     });
-
-    // --------------------------------------------------
-    // TC_GS_002 - SEARCH BY CUSTOMER
-    // --------------------------------------------------
-
-    // it("TC_GS_002 - Verify user can search documents by customer name", async function () {
-    //     this.timeout(90000);
-    
-    //     // Customer name can be changed dynamically.
-    //     const customerName = "JudhistirBehera";
-    
-    //     // Step 1: Select customer.
-    //     await globalSearchPage.selectCustomer(customerName);
-    
-    //     // Step 2: Click Search.
-    //     await globalSearchPage.clickSearch();
-    
-    //     // Step 3: Wait for search results to load.
-    //     await globalSearchPage.waitForSearchToFinish(60000);
-    
-    //     // Step 4: Verify results table is displayed.
-    //     const resultsTable = await globalSearchPage.waitForVisible(
-    //         globalSearchPage.resultsTable,
-    //         60000
-    //     );
-    
-    //     expect(await resultsTable.isDisplayed()).to.equal(true);
-    
-    //     // Step 5: Get total documents found.
-    //     const totalDocuments =
-    //         await globalSearchPage.getTotalDocumentsFound();
-    
-    //     // Step 6: Get rows displayed on the current page.
-    //     const currentPageRows =
-    //         await globalSearchPage.getCurrentPageRowCount();
-    
-    //     // Step 7: Get total pages.
-    //     const totalPages =
-    //         await globalSearchPage.getTotalPageCount();
-    
-    //     console.log("\n========== GLOBAL SEARCH RESULTS ==========");
-    //     console.log(`Customer Name       : ${customerName}`);
-    //     console.log(`Total Documents     : ${totalDocuments}`);
-    //     console.log(`Current Page Rows   : ${currentPageRows}`);
-    //     console.log(`Total Pages         : ${totalPages}`);
-    //     console.log("===========================================\n");
-    
-    //     // Step 8: Validate total documents.
-    //     expect(totalDocuments).to.be.greaterThan(0);
-    
-    //     // Step 9: Validate current page rows.
-    //     expect(currentPageRows).to.be.greaterThan(0);
-    
-    //     // Step 10: Validate row count does not exceed total count.
-    //     expect(currentPageRows).to.be.at.most(totalDocuments);
-    
-    //     // Step 11: Validate pagination.
-    //     expect(totalPages).to.be.greaterThan(0);
-    
-    //     console.log(
-    //         `Customer search completed successfully for ${customerName}.`
-    //     );
-    // });
 
     // --------------------------------------------------
 // TC_GS_002 - SEARCH BY CUSTOMER
@@ -240,6 +182,65 @@ it("TC_GS_002 - Verify user can search documents by customer name", async functi
             `Customer search completed successfully for ${customerName}.`
         );
     }
+});
+
+
+it("TC_GS_003 - Verify user can search documents by customer email", async function () {
+    this.timeout(180000);
+
+    const userName = "Judhistir Behera";
+    const userEmail = "judhistirbeheralaptop@gmail.com";
+
+    console.log("========== SEARCHING CUSTOMER BY EMAIL ==========");
+    console.log(`User Name  : ${userName}`);
+    console.log(`User Email : ${userEmail}`);
+
+    // Optional: Reset form filters if applicable
+    if (typeof globalSearchPage.clearSearchFilters === 'function') {
+        await globalSearchPage.clearSearchFilters();
+    }
+
+    // Step 1: Select User by Email
+    await globalSearchPage.selectUserByEmail(userName, userEmail);
+
+    // Step 2: Click Search
+    await globalSearchPage.clickSearch();
+
+    // Step 3: Wait for search execution
+    await globalSearchPage.waitForSearchToFinish(60000);
+
+    // Step 4: Read total document count
+    const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
+    console.log(`Total Documents Found: ${totalDocuments}`);
+
+    // Step 5: Assert documents were returned
+    expect(totalDocuments, `No documents were found for user email: ${userEmail}`).to.be.greaterThan(0);
+
+    // Step 6: Verify results table visibility
+    const resultsTable = await globalSearchPage.waitForVisible(
+        globalSearchPage.resultsTable,
+        60000
+    );
+    expect(await resultsTable.isDisplayed()).to.equal(true);
+
+    // Step 7: Retrieve pagination details
+    const currentPageRows = await globalSearchPage.getCurrentPageRowCount();
+    const totalPages = await globalSearchPage.getTotalPageCount();
+
+    console.log("\n========== GLOBAL SEARCH RESULTS ==========");
+    console.log(`User Name         : ${userName}`);
+    console.log(`User Email        : ${userEmail}`);
+    console.log(`Total Documents   : ${totalDocuments}`);
+    console.log(`Current Page Rows : ${currentPageRows}`);
+    console.log(`Total Pages       : ${totalPages}`);
+    console.log("===========================================\n");
+
+    // Step 8: Validate pagination consistency
+    expect(currentPageRows).to.be.greaterThan(0);
+    expect(currentPageRows).to.be.at.most(totalDocuments);
+    expect(totalPages).to.be.greaterThan(0);
+
+    console.log(`Customer email search completed successfully for ${userEmail}.`);
 });
 
 });

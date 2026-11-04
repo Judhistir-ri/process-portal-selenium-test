@@ -20,9 +20,11 @@ class GlobalSearchPage {
             "input[placeholder*='Customer'], input[ng-model*='customerName']"
         );
 
+        // this.userInput = By.css(
+        //     "input[placeholder='Select User']"
+        // );
         this.userInput = By.css(
-            "input[placeholder='Select User'], " +
-            "input[aria-label='Select User']"
+            "md-autocomplete input[placeholder='Select User']"
         );
 
         this.originCountryInput = By.css(
@@ -81,14 +83,7 @@ class GlobalSearchPage {
             "button[ng-click='exportToExcel()']"
         );
 
-        // Results
-        // this.resultsTable = By.css(
-        //     "table.table-fixed"
-        // );
-
-        // this.resultsRows = By.xpath(
-        //     "//table[contains(@class,'table-fixed')]//tr[td]"
-        // );
+        this.activeSearchFields = [];
 
         this.documentsFoundText = By.xpath(
             "//*[contains(normalize-space(.),'Documents found')]"
@@ -778,6 +773,7 @@ async waitForVisibleAndEnabled(locator, timeout = 60000) {
     
         // Type the customer name.
         await customerInput.sendKeys(customerName);
+        this.trackSearchField(this.customerNameInput);
     
         console.log("Customer name entered. Waiting for autocomplete...");
     
@@ -1021,6 +1017,126 @@ async getNoDataMessage() {
 
     return (await messageElement.getText()).trim();
 }
+
+async selectUserByEmail(userName, expectedEmail) {
+    console.log(`Searching user: ${userName}`);
+    console.log(`Expected email: ${expectedEmail}`);
+
+    const userInput = await this.waitForVisible(
+        this.userInput,
+        30000
+    );
+
+    await userInput.click();
+    await userInput.clear();
+    await userInput.sendKeys(userName);
+    this.trackSearchField(this.userInput);
+
+    console.log("User name entered. Waiting for user suggestions...");
+
+    // Target visible dropdown suggestion items across AngularJS Material dropdown containers
+    const userSuggestions = By.css(
+        "ul.md-autocomplete-suggestions li, md-virtual-repeat-container li"
+    );
+
+    // Wait until options are rendered and visible
+    await this.driver.wait(async () => {
+        const suggestions = await this.driver.findElements(userSuggestions);
+        for (const suggestion of suggestions) {
+            if (await suggestion.isDisplayed()) {
+                return true;
+            }
+        }
+        return false;
+    }, 30000, "User autocomplete suggestions were not displayed.");
+
+    const suggestions = await this.driver.findElements(userSuggestions);
+    let matchedSuggestion = null;
+
+    // Loop through suggestions to match the exact email
+    for (const suggestion of suggestions) {
+        if (await suggestion.isDisplayed()) {
+            const text = await suggestion.getText();
+            if (text.includes(expectedEmail)) {
+                matchedSuggestion = suggestion;
+                break;
+            }
+        }
+    }
+
+    if (!matchedSuggestion) {
+        throw new Error(`No user suggestion found matching email: ${expectedEmail}`);
+    }
+
+    console.log(`Selecting user suggestion with email: ${expectedEmail}...`);
+    await matchedSuggestion.click();
+
+    console.log(`User selected successfully: ${userName} (${expectedEmail})`);
+    return true;
+}
+
+trackSearchField(locator) {
+    if (!this.activeSearchFields.includes(locator)) {
+        this.activeSearchFields.push(locator);
+    }
+}
+
+// async clearSearchFilters() {
+//     console.time("clearSearchFilters");
+
+//     const fields = [
+//         this.customerNameInput,
+//         this.userNameInput,
+//         this.descriptionInput,
+//         this.docIdInput,
+//         this.orderIdInput,
+//         this.customerReferenceInput,
+//         this.invoiceReferenceInput,
+//         this.trackingIdInput
+//     ];
+
+//     for (const locator of fields) {
+//         if (!locator) continue;
+
+//         console.time(`clear field: ${locator}`);
+
+//         try {
+//             const elements = await this.driver.findElements(locator);
+
+//             if (elements.length > 0) {
+//                 await elements[0].clear();
+//             }
+//         } catch (error) {
+//             console.log(error.message);
+//         }
+
+//         console.timeEnd(`clear field: ${locator}`);
+//     }
+
+//     console.timeEnd("clearSearchFilters");
+// }
+
+async clearSearchFilters() {
+    console.log("Clearing fields used in this test...");
+
+    for (const locator of this.activeSearchFields) {
+        try {
+            const elements = await this.driver.findElements(locator);
+
+            if (elements.length > 0) {
+                await elements[0].clear();
+                console.log(`Cleared: ${locator}`);
+            }
+        } catch (error) {
+            console.log(`Unable to clear field: ${error.message}`);
+        }
+    }
+
+    this.activeSearchFields = [];
+
+    console.log("Search fields cleared.");
+}
+
 
 }
 
