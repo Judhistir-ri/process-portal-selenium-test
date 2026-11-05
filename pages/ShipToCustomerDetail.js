@@ -653,6 +653,7 @@ async selectDocumentFilter(filterName) {
 
     // Select using the actual option value, not its displayed label.
     await dropdown.sendKeys(matchingOption.label);
+    await this.driver.sleep(2000);
 
     console.log(`✓ Selected document filter: ${filterName}`);
     await this.waitForFilterResults(60000);
@@ -673,130 +674,6 @@ async selectDocumentFilter(filterName) {
     );
 }
 
-
-
-// async getSectionTotal(sectionName) {
-//     const driver = this.driver;
-
-//     const sectionSelectors = {
-//         "Ready to ship": "div.shipToCustomers-docs",
-//         "Ready to Ship": "div.shipToCustomers-docs",
-//         "readyToShip": "div.shipToCustomers-docs",
-//         "Completed": "div.completed-docs",
-//         "completed": "div.completed-docs"
-//     };
-
-//     const selector = sectionSelectors[sectionName];
-
-//     if (!selector) {
-//         throw new Error(
-//             `Unknown Ship to Customer section: ${sectionName}`
-//         );
-//     }
-
-//     await this.waitForLoadingToFinish(60000);
-
-//     const section = await driver.wait(
-//         until.elementLocated(By.css(selector)),
-//         30000,
-//         `${sectionName} panel was not found.`
-//     );
-
-//     await driver.wait(
-//         until.elementIsVisible(section),
-//         15000,
-//         `${sectionName} panel is not visible.`
-//     );
-
-//     const total = await driver.wait(
-//         async () => {
-//             try {
-//                 const panel = await driver.findElement(By.css(selector));
-
-//                 return await driver.executeScript(element => {
-//                     const text = element.innerText || "";
-//                     const match = text.match(/Total:\s*([\d,]+)/i);
-
-//                     if (!match) return null;
-
-//                     const value = Number(match[1].replace(/,/g, ""));
-
-//                     return Number.isFinite(value) ? value : null;
-//                 }, panel);
-//             } catch (error) {
-//                 return null;
-//             }
-//         },
-//         30000,
-//         `Could not read the total for ${sectionName}.`
-//     );
-
-//     console.log(`✓ ${sectionName} total: ${total}`);
-
-//     return total;
-// }
-
-    
-// async getSectionTotal(sectionName) {
-//     const { By, until } = require("selenium-webdriver");
-
-//     const sectionSelectors = {
-//         "Ready to ship": "div.shipToCustomer-docs",
-//         "Ready to Ship": "div.shipToCustomer-docs",
-//         "readyToShip": "div.shipToCustomer-docs",
-//         "Completed": "div.completed-docs",
-//         "completed": "div.completed-docs"
-//     };
-
-//     const selector = sectionSelectors[sectionName];
-
-//     if (!selector) {
-//         throw new Error(`Unknown Ship to Customer section: ${sectionName}`);
-//     }
-
-//     const panel = await this.driver.wait(
-//         until.elementLocated(By.css(selector)),
-//         30000,
-//         `${sectionName} panel was not found.`
-//     );
-
-//     await this.driver.wait(
-//         until.elementIsVisible(panel),
-//         15000,
-//         `${sectionName} panel is not visible.`
-//     );
-
-//     // Wait until the panel's own loading spinner disappears.
-//     await this.driver.wait(async () => {
-//         const spinners = await panel.findElements(
-//             By.css("i.fa-spinner, .fa-spin")
-//         );
-
-//         for (const spinner of spinners) {
-//             if (await spinner.isDisplayed()) {
-//                 return false;
-//             }
-//         }
-
-//         return true;
-//     }, 60000, `${sectionName} panel is still loading.`);
-
-//     // Read the summary Total, not the number of rendered rows.
-//     const total = await this.driver.wait(async () => {
-//         const text = await panel.getText();
-//         const match = text.match(/\bTotal:\s*([\d,]+)/i);
-
-//         if (!match) {
-//             return null;
-//         }
-
-//         return Number(match[1].replace(/,/g, ""));
-//     }, 15000, `${sectionName} summary total was not found.`);
-
-//     console.log(`${sectionName} total: ${total}`);
-
-//     return total;
-// }
 
 
 async getSectionTotal(sectionName) {
