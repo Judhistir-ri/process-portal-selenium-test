@@ -4561,21 +4561,79 @@ async function verifyPrint(section, clickPrint, testName) {
   });
 
   
-it("TC_SHIP_005 - Verify Ready to Ship and Completed totals for each document filter",
+  it(
+    "TC_SHIP_005 - Verify Ready to Ship and Completed totals for each document filter",
+    async function () {
+        this.timeout(600000);
+
+        const documentFilters = [
+            "All Documents",
+            "Rush",
+            "Payment Requested",
+            "Open Notifications",
+            "Response Awaited",
+            "On Hold",
+            "Not Notorized",
+            "Nil Payment",
+            "Partial Payment",
+            "All Documents"
+        ];
+
+        const results = [];
+
+        await shipPage.waitForPage();
+        await shipPage.waitForLoadingToFinish(60000);
+
+        for (const filterName of documentFilters) {
+            console.log(
+                `\n========== Checking filter: ${filterName} ==========`
+            );
+
+            // Select filter and wait 2 seconds for the table to update.
+            await shipPage.selectDocumentFilter(filterName);
+
+            // Read the totals only after the wait.
+            const readyToShipTotal =
+                await shipPage.getDocumentCount("readyToShip");
+
+            const completedTotal =
+                await shipPage.getDocumentCount("completed");
+
+            console.log(`Ready to Ship total: ${readyToShipTotal}`);
+            console.log(`Completed total: ${completedTotal}`);
+
+            results.push({
+                filter: filterName,
+                readyToShipTotal,
+                completedTotal
+            });
+        }
+
+        console.log("\n========== Document Filter Totals ==========");
+        console.table(results);
+
+        expect(results).to.have.lengthOf(documentFilters.length);
+    }
+);
+
+  
+  
+it(
+  "TC_SHIP_006 - Verify Ready to Ship and Completed totals for each category",
   async function () {
       this.timeout(600000);
 
-      const documentFilters = [
-          "All Documents",
-          "Rush",
-          "Payment Requested",
-          "Open Notifications",
-          "Response Awaited",
-          "On Hold",
-          "Not Notorized",
-          "Nil Payment",
-          "Partial Payment",
-          "All Documents"
+      const categories = [
+          "All Categories",
+          "Shipping",
+          "Federal Government",
+          "General",
+          "International",
+          "Visa",
+          "Translation",
+          "Dispatch",
+          "Notary",
+          "All Categories"
       ];
 
       const results = [];
@@ -4584,91 +4642,64 @@ it("TC_SHIP_005 - Verify Ready to Ship and Completed totals for each document fi
       await shipPage.waitForPage();
       await shipPage.waitForLoadingToFinish(60000);
 
-      for (const filterName of documentFilters) {
-          console.log(`\n========== Checking filter: ${filterName} ==========`);
+      for (const category of categories) {
+          console.log(
+              `\n========== Checking category: ${category} ==========`
+          );
 
-          await shipPage.selectDocumentFilter(filterName);
+          // Step 1: Select category.
+          await shipPage.selectCategory(category);
 
+          // Step 2: Wait for the category filter to update the table.
+          console.log(
+              `Waiting 2 seconds for "${category}" results to load...`
+          );
+
+          await driver.sleep(2000);
+
+          // Step 3: Read the updated totals.
           const readyToShipTotal =
-              await shipPage.getDocumentCount("readyToShip");
+              await shipPage.getSectionTotal("Ready to Ship");
 
           const completedTotal =
-              await shipPage.getDocumentCount("completed");
+              await shipPage.getSectionTotal("Completed");
 
-          console.log(`Ready to Ship total: ${readyToShipTotal}`);
-          console.log(`Completed total: ${completedTotal}`);
+          console.log(
+              `${category} - Ready to Ship total: ${readyToShipTotal}`
+          );
 
-          expect(readyToShipTotal).to.be.a("number");
-          expect(completedTotal).to.be.a("number");
+          console.log(
+              `${category} - Completed total: ${completedTotal}`
+          );
 
+          // Step 4: Validate totals.
+          expect(
+              readyToShipTotal,
+              `${category}: Ready to Ship total`
+          ).to.be.a("number").and.at.least(0);
+
+          expect(
+              completedTotal,
+              `${category}: Completed total`
+          ).to.be.a("number").and.at.least(0);
+
+          // Step 5: Store results.
           results.push({
-              filter: filterName,
+              category,
               readyToShipTotal,
               completedTotal
           });
       }
 
-      console.log("\n========== Document Filter Totals ==========");
-      console.table(results);
-
-      expect(results).to.have.lengthOf(documentFilters.length);
-  }
-  );
-  
-  
-it("TC_SHIP_006 - Verify Ready to Ship and Completed totals for each category", async function () {
-  const categories = [
-      "All Categories",
-      "Shipping",
-      "Federal Government",
-      "General",
-      "International",
-      "Visa",
-      "Translation",
-      "Dispatch",
-      "Notary",
-      "All Categories"
-  ];
-
-  const results = [];
-
-  for (const category of categories) {
       console.log(
-          `\n========== Checking category: ${category} ==========`
+          "\n========== Category Totals Summary =========="
       );
 
-      // Step 1: Select category and wait for filtering to finish.
-      await shipPage.selectCategory(category);
+      console.table(results);
 
-      // Step 2: Read the totals displayed by the application.
-      const readyToShipTotal =
-          await shipPage.getSectionTotal("Ready to Ship");
-
-      const completedTotal =
-          await shipPage.getSectionTotal("Completed");
-
-      console.log(`Ready to Ship total: ${readyToShipTotal}`);
-      console.log(`Completed total: ${completedTotal}`);
-
-      // Step 3: Validate that both totals are valid numbers.
-      expect(readyToShipTotal, `${category}: Ready to Ship total`)
-          .to.be.a("number")
-          .and.at.least(0);
-
-      expect(completedTotal, `${category}: Completed total`)
-          .to.be.a("number")
-          .and.at.least(0);
-
-      results.push({
-          category,
-          readyToShipTotal,
-          completedTotal
-      });
+      expect(results).to.have.lengthOf(categories.length);
   }
-
-  console.log("\n========== Category Totals Summary ==========");
-  console.table(results);
-});
+);
 
 
 it("TC_SHIP_007 - Search Order IDs 263097, 263098 and Doc ID 99824 in Filter Anything",
