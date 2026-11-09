@@ -70,6 +70,37 @@ class PickupDetail {
         }, timeout, "Loading spinner did not disappear.");
     }
 
+    // async waitForLoadingToFinish(timeout = 60000) {
+    //     await this.driver.wait(async () => {
+    //         return this.driver.executeScript(() => {
+    //             const selectors = [
+    //                 ".loading-spiner-holder",
+    //                 ".loading",
+    //                 ".loader",
+    //                 ".spinner",
+    //                 ".loading-spinner",
+    //                 ".preloader"
+    //             ];
+    
+    //             return selectors.every(selector =>
+    //                 Array.from(
+    //                     document.querySelectorAll(selector)
+    //                 ).every(el => {
+    //                     const style = getComputedStyle(el);
+    
+    //                     return (
+    //                         style.display === "none" ||
+    //                         style.visibility === "hidden" ||
+    //                         style.opacity === "0" ||
+    //                         el.offsetWidth === 0 ||
+    //                         el.offsetHeight === 0
+    //                     );
+    //                 })
+    //             );
+    //         });
+    //     }, timeout, "Loading spinner did not disappear.");
+    // }
+
     async open() {
         await this.driver.get(this.url);
 
@@ -727,6 +758,53 @@ async selectStopFilter(stopName) {
     }
 
 
+    // Wait until the Pickup Queue panel and its actions are ready.
+async waitForPickupQueueReady(timeout = 60000) {
+    const pickupPanel = By.css("div.pickup");
+
+    const exportButton = By.css(
+        "div.pickup button[title*='Export'], div.pickup a[title*='Export']"
+    );
+
+    const printDocsButton = By.css(
+        "div.pickup button[title*='Print'], div.pickup a[title*='Print']"
+    );
+
+    await this.driver.wait(
+        async () => {
+            try {
+                const panel = await this.driver.findElement(pickupPanel);
+
+                if (!(await panel.isDisplayed())) {
+                    return false;
+                }
+
+                const exportElements =
+                    await this.driver.findElements(exportButton);
+
+                const printElements =
+                    await this.driver.findElements(printDocsButton);
+
+                const exportReady = exportElements.some(async element =>
+                    await element.isDisplayed() &&
+                    await element.isEnabled()
+                );
+
+                const printReady = printElements.some(async element =>
+                    await element.isDisplayed() &&
+                    await element.isEnabled()
+                );
+
+                return exportElements.length > 0 &&
+                    printElements.length > 0;
+            } catch (error) {
+                return false;
+            }
+        },
+        timeout,
+        "Pickup Queue panel and action buttons did not become ready."
+    );
+}
 
 
 

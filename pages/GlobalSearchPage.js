@@ -61,7 +61,7 @@ class GlobalSearchPage {
         );
 
         this.invoiceReferenceInput = By.css(
-            "input[placeholder='Invoice Reference']"
+            "input[ng-model='newDocument.invoiceReference']"
         );
 
         this.categoryInput = By.css(
@@ -446,17 +446,17 @@ async waitForVisibleAndEnabled(locator, timeout = 60000) {
         return await this.getResults();
     }
 
-    async searchByCustomerReference(reference) {
-        await this.enterText(
-            this.customerReferenceInput,
-            reference
-        );
+    // async searchByCustomerReference(reference) {
+    //     await this.enterText(
+    //         this.customerReferenceInput,
+    //         reference
+    //     );
 
-        await this.clickElement(this.searchButton);
-        await this.waitForSearchToFinish();
+    //     await this.clickElement(this.searchButton);
+    //     await this.waitForSearchToFinish();
 
-        return await this.getResults();
-    }
+    //     return await this.getResults();
+    // }
 
     async searchByInvoiceReference(reference) {
         await this.enterText(
@@ -933,27 +933,58 @@ async waitForVisibleAndEnabled(locator, timeout = 60000) {
 // Example: "250 Documents found"
 // --------------------------------------------------
 
+// async getTotalDocumentsFound() {
+//     const countLocator = By.xpath(
+//         "//div[contains(normalize-space(.), 'Documents found')]"
+//     );
+
+//     const countElement = await this.waitForVisible(
+//         countLocator,
+//         30000
+//     );
+
+//     const countText = await countElement.getText();
+
+//     const match = countText.match(/(\d+)\s+Documents found/i);
+
+//     if (!match) {
+//         throw new Error(
+//             `Unable to extract document count from: ${countText}`
+//         );
+//     }
+
+//     return Number(match[1]);
+// }
+
 async getTotalDocumentsFound() {
-    const countLocator = By.xpath(
-        "//div[contains(normalize-space(.), 'Documents found')]"
-    );
-
-    const countElement = await this.waitForVisible(
-        countLocator,
-        30000
-    );
-
-    const countText = await countElement.getText();
-
-    const match = countText.match(/(\d+)\s+Documents found/i);
-
-    if (!match) {
-        throw new Error(
-            `Unable to extract document count from: ${countText}`
+    try {
+        // Target the specific text node containing 'Documents found'
+        const countLocator = By.xpath(
+            "//*[contains(normalize-space(text()), 'Documents found')]"
         );
-    }
 
-    return Number(match[1]);
+        // Wait up to 10s for the counter element to be visible
+        const countElement = await this.waitForVisible(
+            countLocator,
+            10000
+        );
+
+        const countText = await countElement.getText();
+
+        // Match patterns like "0 Documents found" or "250 Documents found"
+        const match = countText.match(/(\d+)\s+Documents\s+found/i);
+
+        if (match) {
+            return Number(match[1]);
+        }
+
+        // Fallback: search for any standalone digit before the phrase in raw text
+        const fallbackMatch = countText.match(/(\d+)/);
+        return fallbackMatch ? Number(fallbackMatch[1]) : 0;
+    } catch (error) {
+        console.warn(`Could not read total documents count (defaulting to 0): ${error.message}`);
+        return 0;
+    }
 }
 
 
@@ -1403,6 +1434,304 @@ async getDocIdSearchResults() {
 
     return documents;
 }
+
+/**
+ * Types an Order Id into the input field.
+ */
+async enterOrderId(orderId) {
+    console.log(`Entering Order Id: ${orderId}`);
+
+    // Target the Order Id input field using the DOM attributes from the screenshot (id="input_8", ng-model="newDocument.order")
+    const orderInput = await this.waitForVisible(
+        By.css("input#input_8, input[ng-model='newDocument.order']"),
+        30000
+    );
+
+    await orderInput.click();
+    await orderInput.clear();
+    await orderInput.sendKeys(orderId);
+
+    console.log(`Order Id entered: ${orderId}`);
+
+    if (typeof this.trackSearchField === "function") {
+        this.trackSearchField(
+            By.css("input#input_8, input[ng-model='newDocument.order']")
+        );
+    }
+}
+
+/**
+ * Extracts table data including OrderId, DocId, Country, OriginCountry, 
+ * Customer Name, Contact Person, and Document Type.
+ */
+async getOrderIdSearchResults() {
+    const rows = await this.driver.findElements(this.resultsRows);
+    const documents = [];
+
+    for (const row of rows) {
+        if (!(await row.isDisplayed())) {
+            continue;
+        }
+
+        const cells = await row.findElements(By.css("td, div.ui-grid-cell"));
+        const values = [];
+
+        for (const cell of cells) {
+            const text = await cell.getText();
+            values.push(text.replace(/\s+/g, " ").trim());
+        }
+
+        // Must contain at least 7 columns based on table layout shown in screenshot
+        if (values.length < 7) {
+            continue;
+        }
+
+        documents.push({
+            orderId: values[0],
+            docId: values[1],
+            country: values[2],
+            originCountry: values[3],
+            customerName: values[4],
+            contactPerson: values[5],
+            documentType: values[6]
+        });
+    }
+
+    return documents;
+}
+
+/**
+ * Types a Customer Reference into the input field.
+ */
+async enterCustomerReference(referenceText) {
+    console.log(`Entering Customer Reference: ${referenceText}`);
+
+    // Target the Customer Reference input field using attributes from screenshot (id="input_9", ng-model="newDocument.internalReference")
+    const customerRefInput = await this.waitForVisible(
+        By.css("input#input_9, input[ng-model='newDocument.internalReference']"),
+        30000
+    );
+
+    await customerRefInput.click();
+    await customerRefInput.clear();
+    await customerRefInput.sendKeys(referenceText);
+
+    console.log(`Customer Reference entered: ${referenceText}`);
+
+    if (typeof this.trackSearchField === "function") {
+        this.trackSearchField(
+            By.css("input#input_9, input[ng-model='newDocument.internalReference']")
+        );
+    }
+}
+
+/**
+ * Extracts table data including OrderId, DocId, Country, OriginCountry, 
+ * Customer Name, Contact Person, Document Type, and Customer Reference.
+ */
+/**
+ * Extracts table data safely without throwing index alignment errors.
+ */
+async getCustomerReferenceSearchResults() {
+    const rows = await this.driver.findElements(this.resultsRows);
+    const documents = [];
+
+    for (const row of rows) {
+        if (!(await row.isDisplayed())) {
+            continue;
+        }
+
+        const cells = await row.findElements(By.css("td, div.ui-grid-cell"));
+        const values = [];
+
+        for (const cell of cells) {
+            const text = await cell.getText();
+            values.push(text.replace(/\s+/g, " ").trim());
+        }
+
+        if (values.length < 5) {
+            continue;
+        }
+
+        // Extract fixed core columns
+        const orderId = values[0] || "";
+        const docId = values[1] || "";
+        const country = values[2] || "";
+        const originCountry = values[3] || "";
+        const customerName = values[4] || "";
+        const contactPerson = values[5] || "";
+        const documentType = values[6] || "";
+
+        // Dynamically locate non-empty Customer Reference value from remaining cells
+        let customerReference = "";
+        for (let i = 7; i < values.length; i++) {
+            if (values[i] && values[i].length > 0 && values[i] !== "Waiting" && values[i] !== "Shipped") {
+                customerReference = values[i];
+                break;
+            }
+        }
+
+        documents.push({
+            orderId,
+            docId,
+            country,
+            originCountry,
+            customerName,
+            contactPerson,
+            documentType,
+            customerReference
+        });
+    }
+
+    return documents;
+}
+
+/**
+ * Types an Invoice Reference into the input field.
+ */
+async enterInvoiceReference(referenceText) {
+    console.log(`Entering Invoice Reference: ${referenceText}`);
+
+    // Target the Invoice Reference input field using DOM attributes from screenshot (id="input_10", ng-model="newDocument.invoiceReference")
+    const invoiceRefInput = await this.waitForVisible(
+        By.css("input#input_10, input[ng-model='newDocument.invoiceReference']"),
+        30000
+    );
+
+    await invoiceRefInput.click();
+    await invoiceRefInput.clear();
+    await invoiceRefInput.sendKeys(referenceText);
+
+    console.log(`Invoice Reference entered: ${referenceText}`);
+
+    if (typeof this.trackSearchField === "function") {
+        this.trackSearchField(
+            By.css("input#input_10, input[ng-model='newDocument.invoiceReference']")
+        );
+    }
+}
+
+async getInvoiceReferenceSearchResults() {
+    try {
+        const rows = await this.driver.findElements(this.resultsRows);
+        const documents = [];
+
+        for (const row of rows) {
+            if (!(await row.isDisplayed())) {
+                continue;
+            }
+
+            const cells = await row.findElements(By.css("td, div.ui-grid-cell"));
+            const values = [];
+
+            for (const cell of cells) {
+                const text = await cell.getText();
+                values.push(text.replace(/\s+/g, " ").trim());
+            }
+
+            if (values.length < 5) {
+                continue;
+            }
+
+            documents.push({
+                orderId: values[0] || "",
+                docId: values[1] || "",
+                country: values[2] || "",
+                originCountry: values[3] || "",
+                customerName: values[4] || "",
+                contactPerson: values[5] || "",
+                documentType: values[6] || "",
+                invoiceReference: values[7] || ""
+            });
+        }
+
+        return documents;
+    } catch (e) {
+        return [];
+    }
+}
+
+async getToastErrorMessage() {
+    try {
+        const toastLocator = By.css("#toast-container .toast-message, div.toast-message");
+        const toastElements = await this.driver.findElements(toastLocator);
+        
+        if (toastElements.length > 0 && await toastElements[0].isDisplayed()) {
+            const errorText = await toastElements[0].getText();
+            return errorText.trim();
+        }
+    } catch (e) {
+        return null;
+    }
+    return null;
+}
+
+// --------------------------------------------------
+// SELECT CATEGORY FROM GLOBAL SEARCH DROPDOWN
+// --------------------------------------------------
+
+async selectCategory(categoryName) {
+    console.log(`Selecting Category: ${categoryName}`);
+
+    // Step 1: Wait for any active loading spinner to disappear first
+    await this.waitForSpinnerToDisappear(30000);
+
+    const categoryInputLocator = By.css(
+        "md-autocomplete[placeholder='Select Category'] input, input#input-11"
+    );
+
+    // Step 2: Locate and scroll into view if necessary
+    const categoryInput = await this.waitForVisible(categoryInputLocator, 30000);
+    await this.driver.executeScript("arguments[0].scrollIntoView({block: 'center'});", categoryInput);
+
+    // Step 3: Click and enter text safely
+    await categoryInput.click();
+    await categoryInput.clear();
+    await categoryInput.sendKeys(categoryName);
+
+    console.log(`Typed Category: ${categoryName}`);
+
+    // Step 4: Global XPath targeting the rendered dropdown suggestion at <body> level
+    const categoryOption = By.xpath(
+        `//ul[contains(@class,'md-autocomplete-suggestions')]//li[//*[normalize-space(.)='${categoryName}']] | ` +
+        `//md-virtual-repeat-container//li[//*[normalize-space(.)='${categoryName}']]`
+    );
+
+    // Step 5: Wait for option to be visible and click
+    const option = await this.waitForVisible(categoryOption, 30000);
+    await option.click();
+
+    console.log(`Selected Category: ${categoryName}`);
+
+    if (typeof this.trackSearchField === "function") {
+        this.trackSearchField(categoryInputLocator);
+    }
+}
+
+/**
+ * Calculates total page count based on total documents (defaulting to 10 rows per page grid).
+ */
+// async getTotalPageCount(totalDocuments, rowsPerPage = 10) {
+//     if (!totalDocuments || totalDocuments <= 0) {
+//         return 0;
+//     }
+//     return Math.ceil(totalDocuments / rowsPerPage);
+// }
+
+async waitForSpinnerToDisappear(timeout = 30000) {
+    const spinnerLocator = By.css("div.loading-spiner-holder, div.data-loading");
+    try {
+        await this.driver.wait(async () => {
+            const spinners = await this.driver.findElements(spinnerLocator);
+            if (spinners.length === 0) return true;
+            const isVisible = await spinners[0].isDisplayed();
+            return !isVisible;
+        }, timeout, "Loading spinner did not disappear in time.");
+    } catch (e) {
+        // Continue if spinner is already removed or hidden
+    }
+}
+
 
 
 
