@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha tests/**/*.test.js --reporter mochawesome",
-    "test_login": "mocha tests/login/login.test.js --reporter mochawesome"
+    "test_login": "mocha tests/login/login.test.js --reporter mochawesome",
+    "test_global_search": "mocha tests/globalSearch/globalSearch.test.js --reporter mochawesome --reporter-options reportDir=reports/global-search,reportFilename=GlobalSearchReport,html=true,json=true,overwrite=true,quiet=true"
   },
   "keywords": [],
   "author": "",

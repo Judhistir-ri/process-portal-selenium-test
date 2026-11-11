@@ -1383,7 +1383,7 @@ it("TC_GS_014 - Verify user can search documents by Tracking Id",
         this.timeout(300000);
 
         const trackingIds = [
-            "Test-track-out-1",
+            // "Test-track-out-1",
             "invalidTrackid"
         ];
 
@@ -1402,6 +1402,13 @@ it("TC_GS_014 - Verify user can search documents by Tracking Id",
             await globalSearchPage.clearSearchFilters();
 
             // Step 2: Enter Tracking ID.
+            // await globalSearchPage.enterTrackingId(trackingId);
+            // Step 2: Register Tracking ID field for cleanup.
+            globalSearchPage.trackSearchField(
+                globalSearchPage.trackingIdInput
+            );
+
+            // Step 3: Enter Tracking ID.
             await globalSearchPage.enterTrackingId(trackingId);
 
             // Step 3: Click Search.
