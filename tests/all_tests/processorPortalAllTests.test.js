@@ -3694,86 +3694,106 @@ describe("Pickup Page - Export and Print Docs Functional Tests", function () {
   // ------------------------------------------------
 
   async function verifyPrint(panel, clickPrint, testName) {
+    // Wait until the Pickup page has finished loading.
+    await pickupPage.waitForLoadingToFinish();
 
-      const count = await pickupPage.getDocumentCount(panel);
+    // Read the actual document total from the panel.
+    const panelName = testName.includes("Pickup Queue")
+        ? "Pickup Queue"
+        : "Completed";
 
-      console.log(`${testName}: detected ${count} document row(s).`);
+    const total = await pickupPage.getSectionTotal(panelName);
 
-      if (count === 0) {
+    console.log(`${testName}: panel total = ${total}`);
 
-          await clickPrint();
+    // If the application says there are no documents,
+    // verify the expected "No documents found" message.
+    if (total === 0) {
+        await clickPrint();
 
-          await pickupPage.waitForNoDocumentsMessage();
+        await pickupPage.waitForNoDocumentsMessage();
 
-          console.log(
-              `✓ ${testName}: correctly handled the empty panel.`
-          );
+        console.log(
+            `✓ ${testName}: correctly handled the empty panel.`
+        );
 
-          return;
-      }
+        return;
+    }
 
-      const handlesBefore = await driver.getAllWindowHandles();
+    // The panel reports documents, so do not enter the empty branch.
+    // Wait until the actual table rows become available.
+    await driver.wait(
+        async () => {
+            const count = await pickupPage.getDocumentCount(panel);
+            console.log(`${testName}: rendered rows = ${count}`);
 
-      const originalHandle = await driver.getWindowHandle();
+            return count > 0;
+        },
+        30000,
+        `${testName}: panel total is ${total}, but document rows did not render.`
+    );
 
-      await clickPrint();
+    const handlesBefore = await driver.getAllWindowHandles();
+    const originalHandle = await driver.getWindowHandle();
 
-      await driver.wait(async () => {
+    // Click Print Docs.
+    await clickPrint();
 
-          const handles = await driver.getAllWindowHandles();
+    // Wait for the print window to open.
+    await driver.wait(
+        async () => {
+            const handles = await driver.getAllWindowHandles();
 
-          return handles.some(
-              handle => !handlesBefore.includes(handle)
-          );
+            return handles.some(
+                handle => !handlesBefore.includes(handle)
+            );
+        },
+        20000,
+        `${testName}: Print Docs did not open a new window.`
+    );
 
-      }, 20000, `${testName}: Print Docs did not open a new window.`);
+    const handlesAfter = await driver.getAllWindowHandles();
 
-      const handlesAfter = await driver.getAllWindowHandles();
+    const newHandle = handlesAfter.find(
+        handle => !handlesBefore.includes(handle)
+    );
 
-      const newHandle = handlesAfter.find(
-          handle => !handlesBefore.includes(handle)
-      );
+    expect(newHandle, "New print window should exist").to.exist;
 
-      expect(newHandle, "New print window should exist").to.exist;
+    try {
+        await driver.switchTo().window(newHandle);
 
-      try {
+        await driver.wait(
+            async () => {
+                const url = await driver.getCurrentUrl();
+                return Boolean(url);
+            },
+            15000,
+            "Print window did not load."
+        );
 
-          await driver.switchTo().window(newHandle);
+        const printUrl = await driver.getCurrentUrl();
 
-          await driver.wait(async () => {
+        expect(printUrl).to.be.a("string").and.not.empty;
 
-              const url = await driver.getCurrentUrl();
+        console.log(`✓ ${testName}: print window opened.`);
+        console.log("Print URL:", printUrl);
 
-              return Boolean(url);
+    } finally {
+        const handles = await driver.getAllWindowHandles();
 
-          }, 15000, "Print window did not load.");
+        if (handles.includes(newHandle)) {
+            await driver.switchTo().window(newHandle);
+            await driver.close();
+        }
 
-          const printUrl = await driver.getCurrentUrl();
+        const remaining = await driver.getAllWindowHandles();
 
-          expect(printUrl).to.be.a("string").and.not.empty;
-
-          console.log(`✓ ${testName}: print window opened.`);
-          console.log("Print URL:", printUrl);
-
-      } finally {
-
-          const handles = await driver.getAllWindowHandles();
-
-          if (handles.includes(newHandle)) {
-
-              await driver.switchTo().window(newHandle);
-
-              await driver.close();
-          }
-
-          const remaining = await driver.getAllWindowHandles();
-
-          if (remaining.includes(originalHandle)) {
-
-              await driver.switchTo().window(originalHandle);
-          }
-      }
-  }
+        if (remaining.includes(originalHandle)) {
+            await driver.switchTo().window(originalHandle);
+        }
+    }
+}
 
   // Pickup test cases go here.
 
