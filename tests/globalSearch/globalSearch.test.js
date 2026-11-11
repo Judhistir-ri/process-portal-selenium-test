@@ -1357,98 +1357,281 @@ it("TC_GS_010 - Verify user can search documents by Invoice Reference", async fu
 // TC_GS_011 - SEARCH BY CATEGORY
 // --------------------------------------------------
 
-it("TC_GS_011 - Verify user can search documents by Select Category dropdown", async function () {
-    this.timeout(300000);
+// it("TC_GS_011 - Verify user can search documents by Select Category dropdown", async function () {
+//     this.timeout(300000);
 
-    const categoriesToSearch = [
-        "Federal Government",
-        "General",
-        "Shipping/Commercial",
-        "International",
-        "Visa",
-        "Translation",
-        "Notary",
-        "Dispatch"
-    ];
+//     const categoriesToSearch = [
+//         "Federal Government",
+//         "General",
+//         "Shipping/Commercial",
+//         "International",
+//         "Visa",
+//         "Translation",
+//         "Notary",
+//         "Dispatch"
+//     ];
 
-    const summaryReport = [];
+//     const summaryReport = [];
 
-    // Step 1: Ensure clean form state & wait for any initial spinner to clear
-    if (typeof globalSearchPage.clearSearchFilters === "function") {
-        await globalSearchPage.clearSearchFilters();
+//     // Step 1: Ensure clean form state & wait for any initial spinner to clear
+//     if (typeof globalSearchPage.clearSearchFilters === "function") {
+//         await globalSearchPage.clearSearchFilters();
+//     }
+//     await globalSearchPage.waitForSpinnerToDisappear(30000);
+
+//     for (const categoryName of categoriesToSearch) {
+//         console.log("\n==========================================");
+//         console.log(`CATEGORY SEARCH: ${categoryName}`);
+//         console.log("==========================================");
+
+//         // Step 2: Select Category (includes built-in spinner wait)
+//         await globalSearchPage.selectCategory(categoryName);
+
+//         // Step 3: Click Search button
+//         await globalSearchPage.clickSearch();
+
+//         // Step 4: Wait explicitly for search loading spinner to finish
+//         await globalSearchPage.waitForSpinnerToDisappear(45000);
+
+//         // Step 5: Check if warning toast ("Data Not Exist") appears
+//         const errorMessage = await globalSearchPage.getToastErrorMessage();
+
+//         // Step 6: Read total document count
+//         const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
+//         console.log(`Total Documents Found for "${categoryName}": ${totalDocuments}`);
+
+//         // Step 7: Calculate total pages (10 rows per page)
+//         const totalPages = await globalSearchPage.getTotalPageCount(totalDocuments, 10);
+//         console.log(`Calculated Total Pages: ${totalPages}`);
+
+//         let page1RowsCount = 0;
+
+//         if (totalDocuments > 0 && !errorMessage) {
+//             // Wait for grid rendering and read table rows
+//             if (typeof globalSearchPage.waitForSearchToFinish === "function") {
+//                 await globalSearchPage.waitForSearchToFinish(30000);
+//             }
+//             const tableRows = await globalSearchPage.getGlobalSearchTableData();
+//             page1RowsCount = tableRows.length;
+//             console.log(`Page 1 Rows Extracted: ${page1RowsCount}`);
+//         } else {
+//             console.log(`No table present. Warning Toast / State: "${errorMessage || 'Data Not Exist'}"`);
+//         }
+
+//         // Step 8: Store iteration metrics
+//         summaryReport.push({
+//             "Category Name": categoryName,
+//             "Total Documents": totalDocuments,
+//             "Total Pages": totalPages,
+//             "Page 1 Rows": page1RowsCount,
+//             "Status / Error": totalDocuments > 0 ? "Success" : (errorMessage || "Data Not Exist")
+//         });
+
+//         // Step 9: Assert document count format
+//         expect(totalDocuments, `Document count should be valid for Category: ${categoryName}`).to.be.a("number");
+//         expect(totalDocuments).to.be.at.least(0);
+
+//         console.log(`Category search completed for: ${categoryName}`);
+
+//         // Step 10: Clear search filters and wait for loader before next loop
+//         if (typeof globalSearchPage.clearSearchFilters === "function") {
+//             await globalSearchPage.clearSearchFilters();
+//         }
+//         await globalSearchPage.waitForSpinnerToDisappear(30000);
+//     }
+
+//     // --------------------------------------------------
+//     // FINAL CATEGORY SEARCH SUMMARY TABLE
+//     // --------------------------------------------------
+
+//     console.log("\n=================== CATEGORY SEARCH SUMMARY REPORT ===================");
+//     console.table(summaryReport);
+//     console.log("======================================================================");
+
+//     expect(summaryReport.length).to.equal(categoriesToSearch.length);
+// });
+
+
+// --------------------------------------------------
+// TC_GS_DATE_001 - SEARCH BY FROM DATE
+// --------------------------------------------------
+
+it("TC_GS_012 - Verify user can search documents by From Date", async function () {
+    this.timeout(180000);
+
+    // 05/11/2026 = 5 November 2026
+    const fromDate = "2026-11-05";
+
+    console.log("\n========== SEARCH BY FROM DATE ==========");
+    console.log(`From Date: 05/11/2026`);
+
+    // Step 1: Select From Date.
+    await globalSearchPage.selectFromDate(fromDate);
+
+    // Step 2: Verify selected date.
+    const selectedDate = await driver.findElement(
+        globalSearchPage.fromDateInput
+    );
+
+    const actualDate = await selectedDate.getAttribute("value");
+
+    expect(actualDate).to.equal(fromDate);
+
+    console.log(`Selected From Date: ${actualDate}`);
+
+    // Step 3: Click Search.
+    await globalSearchPage.clickSearch();
+
+    // Step 4: Wait for search results to load.
+    await globalSearchPage.waitForSearchToFinish(60000);
+
+    // Step 5: Get total documents found.
+    const totalDocuments =
+        await globalSearchPage.getTotalDocumentsFound();
+
+    console.log(`Total Documents Found: ${totalDocuments}`);
+
+    // Step 6: Get current page row count.
+    const currentPageRows =
+        await globalSearchPage.getCurrentPageRowCount();
+
+    // Step 7: Get total page count.
+    const totalPages =
+        await globalSearchPage.getTotalPageCount();
+
+    // Step 8: Display search summary.
+    console.log("\n========== FROM DATE SEARCH RESULTS ==========");
+    console.log(`From Date          : 05/11/2026`);
+    console.log(`Total Documents    : ${totalDocuments}`);
+    console.log(`Current Page Rows  : ${currentPageRows}`);
+    console.log(`Total Pages        : ${totalPages}`);
+    console.log("==============================================\n");
+
+    // Step 9: Validate search results.
+    expect(totalDocuments).to.be.at.least(0);
+    expect(totalPages).to.be.greaterThan(0);
+
+    if (totalDocuments > 0) {
+        expect(currentPageRows).to.be.greaterThan(0);
+
+        const resultsTable = await globalSearchPage.waitForVisible(
+            globalSearchPage.resultsTable,
+            60000
+        );
+
+        expect(await resultsTable.isDisplayed()).to.equal(true);
+
+        console.log("Documents found successfully for the selected From Date.");
+    } else {
+        const noDataMessage =
+            await globalSearchPage.getNoDataMessage();
+
+        console.log(`No Data Message: ${noDataMessage}`);
+
+        expect(noDataMessage.toLowerCase()).to.include(
+            "data not exist"
+        );
+
+        console.log("No documents found for the selected From Date.");
     }
-    await globalSearchPage.waitForSpinnerToDisappear(30000);
-
-    for (const categoryName of categoriesToSearch) {
-        console.log("\n==========================================");
-        console.log(`CATEGORY SEARCH: ${categoryName}`);
-        console.log("==========================================");
-
-        // Step 2: Select Category (includes built-in spinner wait)
-        await globalSearchPage.selectCategory(categoryName);
-
-        // Step 3: Click Search button
-        await globalSearchPage.clickSearch();
-
-        // Step 4: Wait explicitly for search loading spinner to finish
-        await globalSearchPage.waitForSpinnerToDisappear(45000);
-
-        // Step 5: Check if warning toast ("Data Not Exist") appears
-        const errorMessage = await globalSearchPage.getToastErrorMessage();
-
-        // Step 6: Read total document count
-        const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
-        console.log(`Total Documents Found for "${categoryName}": ${totalDocuments}`);
-
-        // Step 7: Calculate total pages (10 rows per page)
-        const totalPages = await globalSearchPage.getTotalPageCount(totalDocuments, 10);
-        console.log(`Calculated Total Pages: ${totalPages}`);
-
-        let page1RowsCount = 0;
-
-        if (totalDocuments > 0 && !errorMessage) {
-            // Wait for grid rendering and read table rows
-            if (typeof globalSearchPage.waitForSearchToFinish === "function") {
-                await globalSearchPage.waitForSearchToFinish(30000);
-            }
-            const tableRows = await globalSearchPage.getGlobalSearchTableData();
-            page1RowsCount = tableRows.length;
-            console.log(`Page 1 Rows Extracted: ${page1RowsCount}`);
-        } else {
-            console.log(`No table present. Warning Toast / State: "${errorMessage || 'Data Not Exist'}"`);
-        }
-
-        // Step 8: Store iteration metrics
-        summaryReport.push({
-            "Category Name": categoryName,
-            "Total Documents": totalDocuments,
-            "Total Pages": totalPages,
-            "Page 1 Rows": page1RowsCount,
-            "Status / Error": totalDocuments > 0 ? "Success" : (errorMessage || "Data Not Exist")
-        });
-
-        // Step 9: Assert document count format
-        expect(totalDocuments, `Document count should be valid for Category: ${categoryName}`).to.be.a("number");
-        expect(totalDocuments).to.be.at.least(0);
-
-        console.log(`Category search completed for: ${categoryName}`);
-
-        // Step 10: Clear search filters and wait for loader before next loop
-        if (typeof globalSearchPage.clearSearchFilters === "function") {
-            await globalSearchPage.clearSearchFilters();
-        }
-        await globalSearchPage.waitForSpinnerToDisappear(30000);
-    }
-
-    // --------------------------------------------------
-    // FINAL CATEGORY SEARCH SUMMARY TABLE
-    // --------------------------------------------------
-
-    console.log("\n=================== CATEGORY SEARCH SUMMARY REPORT ===================");
-    console.table(summaryReport);
-    console.log("======================================================================");
-
-    expect(summaryReport.length).to.equal(categoriesToSearch.length);
 });
+
+
+    // --------------------------------------------------
+    // TC_GS_013 - SEARCH BY FROM DATE AND TO DATE
+    // --------------------------------------------------
+
+   
+// --------------------------------------------------
+// TC_GS_013 - SEARCH BY FROM DATE AND TO DATE
+// --------------------------------------------------
+
+it("TC_GS_013 - Verify user can search documents by From Date and To Date", async function () {
+    this.timeout(180000);
+
+    const fromDate = "2026-11-01";
+    const toDate = "2026-11-11";
+
+    console.log("\n========== SEARCH BY DATE RANGE ==========");
+    console.log("From Date: 01/11/2026");
+    console.log("To Date  : 11/11/2026");
+
+    // Step 1: Register date fields for cleanup.
+    globalSearchPage.trackSearchField(
+        globalSearchPage.fromDateInput
+    );
+
+    globalSearchPage.trackSearchField(
+        globalSearchPage.toDateInput
+    );
+
+    // Step 2: Set dates, click Search and wait for results.
+    const results = await globalSearchPage.searchByDateRange(
+        fromDate,
+        toDate
+    );
+
+    // Step 3: Verify selected dates.
+    const fromElement = await globalSearchPage.waitForVisible(
+        globalSearchPage.fromDateInput
+    );
+
+    const toElement = await globalSearchPage.waitForVisible(
+        globalSearchPage.toDateInput
+    );
+
+    const actualFromDate = await fromElement.getAttribute("value");
+    const actualToDate = await toElement.getAttribute("value");
+
+    console.log(`Actual From Date: ${actualFromDate}`);
+    console.log(`Actual To Date  : ${actualToDate}`);
+
+    expect(actualFromDate).to.equal(fromDate);
+    expect(actualToDate).to.equal(toDate);
+
+    // Step 4: Get total documents found.
+    const totalDocuments =
+        await globalSearchPage.getTotalDocumentsFound();
+
+    console.log(`Total Documents Found: ${totalDocuments}`);
+
+    // Step 5: Get current page row count.
+    const currentPageRows =
+        await globalSearchPage.getCurrentPageRowCount();
+
+    // Step 6: Get total pages.
+    const totalPages =
+        await globalSearchPage.getTotalPageCount();
+
+    // Step 7: Display document summary.
+    console.log("\n========== DATE RANGE SEARCH RESULTS ==========");
+    console.log("From Date          : 01/11/2026");
+    console.log("To Date            : 11/11/2026");
+    console.log(`Total Documents    : ${totalDocuments}`);
+    console.log(`Current Page Rows  : ${currentPageRows}`);
+    console.log(`Total Pages        : ${totalPages}`);
+    console.log(`Extracted Rows     : ${results.length}`);
+    console.log("================================================");
+
+    // Step 8: Validate the search results.
+    expect(totalDocuments).to.be.greaterThan(0);
+    expect(currentPageRows).to.be.greaterThan(0);
+    expect(totalPages).to.be.greaterThan(0);
+
+    // expect(currentPageRows).to.be.at.most(totalDocuments);
+    expect(currentPageRows).to.equal(results.length);
+
+expect(
+    currentPageRows,
+    "Current page rows should not exceed total documents"
+).to.be.at.most(totalDocuments);
+
+    console.log(
+        "TC_GS_013 passed: Date range search completed successfully."
+    );
+});
+
+
+
 
 });

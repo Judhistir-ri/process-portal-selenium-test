@@ -31,10 +31,19 @@ class GlobalSearchPage {
         //     "input[placeholder='Select Origin Country']"
         // );
 
-        this.originCountryInput = By.xpath(
-            "//input[@placeholder='Select Origin Country']"
-        );
+        // this.originCountryInput = By.xpath(
+        //     "//input[@placeholder='Select Origin Country']"
+        // );
 
+        // this.destinationCountryInput = By.css(
+        //     "input[placeholder='Select Destination Country'], " +
+        //     "input[placeholder*='Select Destination Count']"
+        // );
+
+        this.originCountryInput = By.css(
+            "input[placeholder='Select Origin Country']"
+        );
+        
         this.destinationCountryInput = By.css(
             "input[placeholder='Select Destination Country'], " +
             "input[placeholder*='Select Destination Count']"
@@ -472,28 +481,6 @@ async waitForVisibleAndEnabled(locator, timeout = 60000) {
 
     async searchByTrackingId(trackingId) {
         await this.enterText(this.trackingIdInput, trackingId);
-        await this.clickElement(this.searchButton);
-        await this.waitForSearchToFinish();
-
-        return await this.getResults();
-    }
-
-    async setDateRange(fromDate, toDate) {
-        // Expected format: YYYY-MM-DD, e.g. 2026-10-01
-        if (fromDate) {
-            await this.enterText(this.fromDateInput, fromDate);
-        }
-
-        if (toDate) {
-            await this.enterText(this.toDateInput, toDate);
-        }
-
-        return true;
-    }
-
-    async searchByDateRange(fromDate, toDate) {
-        await this.setDateRange(fromDate, toDate);
-
         await this.clickElement(this.searchButton);
         await this.waitForSearchToFinish();
 
@@ -992,21 +979,68 @@ async getTotalDocumentsFound() {
 // GET CURRENT PAGE ROW COUNT
 // --------------------------------------------------
 
+// async getCurrentPageRowCount() {
+//     const rows = await this.driver.findElements(
+//         this.resultsRows
+//     );
+
+//     let visibleRows = 0;
+
+//     for (const row of rows) {
+//         if (await row.isDisplayed()) {
+//             visibleRows++;
+//         }
+//     }
+
+//     return visibleRows;
+// }
+
+
 async getCurrentPageRowCount() {
     const rows = await this.driver.findElements(
         this.resultsRows
     );
 
-    let visibleRows = 0;
+    let dataRowCount = 0;
 
     for (const row of rows) {
-        if (await row.isDisplayed()) {
-            visibleRows++;
+        try {
+            if (!(await row.isDisplayed())) {
+                continue;
+            }
+
+            // Get only the table data cells.
+            const cells = await row.findElements(
+                By.css("td")
+            );
+
+            // Ignore header rows.
+            if (cells.length === 0) {
+                continue;
+            }
+
+            const rowText = (await row.getText())
+                .replace(/\s+/g, " ")
+                .trim();
+
+            // Ignore empty and no-data rows.
+            if (
+                !rowText ||
+                /data not exist|no records found|no documents found/i.test(rowText)
+            ) {
+                continue;
+            }
+
+            dataRowCount++;
+
+        } catch (error) {
+            // Ignore rows refreshed by AngularJS.
         }
     }
 
-    return visibleRows;
+    return dataRowCount;
 }
+
 
 
 // --------------------------------------------------
@@ -1180,88 +1214,46 @@ async clearSearchFilters() {
 // GET GLOBAL SEARCH TABLE DATA
 // --------------------------------------------------
 
-// async getGlobalSearchTableData() {
-//     const rows = await this.driver.findElements(
-//         this.resultsRows
+
+// async selectOriginCountry(countryName) {
+//     console.log(`Selecting Origin Country: ${countryName}`);
+
+//     // Step 1: Find and click the Origin Country input.
+//     const originInput = await this.waitForVisible(
+//         this.originCountryInput,
+//         30000
 //     );
 
-//     const documents = [];
+//     await originInput.click();
 
-//     for (const row of rows) {
-//         if (!(await row.isDisplayed())) {
-//             continue;
-//         }
+//     // Step 2: Type the country name.
+//     await originInput.clear();
+//     await originInput.sendKeys(countryName);
 
-//         const cells = await row.findElements(
-//             By.css("td")
-//         );
+//     console.log(`Typed Origin Country: ${countryName}`);
 
-//         const values = [];
+//     // Step 3: Global XPath targeting the rendered dropdown suggestion across the entire DOM
+//     const countryOption = By.xpath(
+//         `//ul[contains(@class,'md-autocomplete-suggestions')]//li[//*[normalize-space(.)='${countryName}']] | ` +
+//         `//md-virtual-repeat-container//li[//*[normalize-space(.)='${countryName}']]`
+//     );
 
-//         for (const cell of cells) {
-//             values.push(
-//                 (await cell.getText())
-//                     .replace(/\s+/g, " ")
-//                     .trim()
-//             );
-//         }
+//     // Step 4: Wait until the matching suggestion is visible.
+//     const option = await this.waitForVisible(
+//         countryOption,
+//         30000
+//     );
 
-//         // Skip rows that do not contain the required columns.
-//         if (values.length < 5) {
-//             continue;
-//         }
+//     // Step 5: Click the suggestion to select the country.
+//     await option.click();
 
-//         documents.push({
-//             orderId: values[0],
-//             docId: values[1],
-//             country: values[2],
-//             originCountry: values[3],
-//             customerName: values[4]
-//         });
+//     console.log(`Selected Origin Country: ${countryName}`);
+
+//     // Track the field for cleanup.
+//     if (typeof this.trackSearchField === "function") {
+//         this.trackSearchField(this.originCountryInput);
 //     }
-
-//     return documents;
 // }
-
-async selectOriginCountry(countryName) {
-    console.log(`Selecting Origin Country: ${countryName}`);
-
-    // Step 1: Find and click the Origin Country input.
-    const originInput = await this.waitForVisible(
-        this.originCountryInput,
-        30000
-    );
-
-    await originInput.click();
-
-    // Step 2: Type the country name.
-    await originInput.clear();
-    await originInput.sendKeys(countryName);
-
-    console.log(`Typed Origin Country: ${countryName}`);
-
-    // Step 3: Global XPath targeting the rendered dropdown suggestion across the entire DOM
-    const countryOption = By.xpath(
-        `//ul[contains(@class,'md-autocomplete-suggestions')]//li[//*[normalize-space(.)='${countryName}']] | ` +
-        `//md-virtual-repeat-container//li[//*[normalize-space(.)='${countryName}']]`
-    );
-
-    // Step 4: Wait until the matching suggestion is visible.
-    const option = await this.waitForVisible(
-        countryOption,
-        30000
-    );
-
-    // Step 5: Click the suggestion to select the country.
-    await option.click();
-
-    console.log(`Selected Origin Country: ${countryName}`);
-
-    // Track the field for cleanup.
-    if (typeof this.trackSearchField === "function") {
-        this.trackSearchField(this.originCountryInput);
-    }
-}
 
 async getGlobalSearchTableData() {
     const rows = await this.driver.findElements(
@@ -1308,39 +1300,65 @@ async getGlobalSearchTableData() {
 // DESTINATION COUNTRY SEARCH
 // --------------------------------------------------
 
-async selectDestinationCountry(countryName) {
-    console.log(`Selecting Destination Country: ${countryName}`);
+// async selectDestinationCountry(countryName) {
+//     console.log(`Selecting Destination Country: ${countryName}`);
 
-    // Step 1: Find and click the Destination Country input field
-    const destInput = await this.waitForVisible(
-        By.css("md-autocomplete[placeholder='Select Destination Country'] input"),
-        30000
+//     // Step 1: Find and click the Destination Country input field
+//     const destInput = await this.waitForVisible(
+//         By.css("md-autocomplete[placeholder='Select Destination Country'] input"),
+//         30000
+//     );
+
+//     await destInput.click();
+//     await destInput.clear();
+//     await destInput.sendKeys(countryName);
+
+//     console.log(`Typed Destination Country: ${countryName}`);
+
+//     // Step 2: Global XPath targeting the rendered autocomplete suggestion
+//     const countryOption = By.xpath(
+//         `//ul[contains(@class,'md-autocomplete-suggestions')]//li[//*[normalize-space(.)='${countryName}']] | ` +
+//         `//md-virtual-repeat-container//li[//*[normalize-space(.)='${countryName}']]`
+//     );
+
+//     // Step 3: Wait until the matching suggestion is visible and click
+//     const option = await this.waitForVisible(countryOption, 30000);
+//     await option.click();
+
+//     console.log(`Selected Destination Country: ${countryName}`);
+
+//     if (typeof this.trackSearchField === "function") {
+//         this.trackSearchField(
+//             By.css("md-autocomplete[placeholder='Select Destination Country'] input")
+//         );
+//     }
+// }
+
+
+async selectOriginCountry(countryName) {
+    await this.selectCountryFromAutocomplete(
+        this.originCountryInput,
+        countryName,
+        "Origin Country"
     );
 
-    await destInput.click();
-    await destInput.clear();
-    await destInput.sendKeys(countryName);
+    this.trackSearchField(this.originCountryInput);
 
-    console.log(`Typed Destination Country: ${countryName}`);
-
-    // Step 2: Global XPath targeting the rendered autocomplete suggestion
-    const countryOption = By.xpath(
-        `//ul[contains(@class,'md-autocomplete-suggestions')]//li[//*[normalize-space(.)='${countryName}']] | ` +
-        `//md-virtual-repeat-container//li[//*[normalize-space(.)='${countryName}']]`
-    );
-
-    // Step 3: Wait until the matching suggestion is visible and click
-    const option = await this.waitForVisible(countryOption, 30000);
-    await option.click();
-
-    console.log(`Selected Destination Country: ${countryName}`);
-
-    if (typeof this.trackSearchField === "function") {
-        this.trackSearchField(
-            By.css("md-autocomplete[placeholder='Select Destination Country'] input")
-        );
-    }
+    return true;
 }
+
+async selectDestinationCountry(countryName) {
+    await this.selectCountryFromAutocomplete(
+        this.destinationCountryInput,
+        countryName,
+        "Destination Country"
+    );
+
+    this.trackSearchField(this.destinationCountryInput);
+
+    return true;
+}
+
 
 // Search by Description
 async searchByDescription(description) {
@@ -1731,6 +1749,244 @@ async waitForSpinnerToDisappear(timeout = 30000) {
         // Continue if spinner is already removed or hidden
     }
 }
+
+// --------------------------------------------------
+// SELECT FROM DATE
+// Expected format: YYYY-MM-DD
+// Example: 2026-11-05
+// --------------------------------------------------
+
+async selectFromDate(dateValue) {
+    console.log(`Selecting From Date: ${dateValue}`);
+
+    const dateInput = await this.waitForVisible(
+        this.fromDateInput,
+        30000
+    );
+
+    await this.driver.executeScript(
+        (element, value) => {
+            const setter = Object.getOwnPropertyDescriptor(
+                HTMLInputElement.prototype,
+                "value"
+            ).set;
+
+            setter.call(element, value);
+
+            // Trigger AngularJS input and change events.
+            element.dispatchEvent(
+                new Event("input", { bubbles: true })
+            );
+
+            element.dispatchEvent(
+                new Event("change", { bubbles: true })
+            );
+
+            element.blur();
+        },
+        dateInput,
+        dateValue
+    );
+
+    // Verify that the date was actually selected.
+    await this.driver.wait(
+        async () => {
+            const currentValue = await dateInput.getAttribute("value");
+            return currentValue === dateValue;
+        },
+        10000,
+        `From Date was not set to ${dateValue}`
+    );
+
+    console.log(`From Date selected successfully: ${dateValue}`);
+
+    return true;
+}
+
+
+async setDateRange(fromDate, toDate) {
+    console.log("Setting Global Search date range...");
+
+    const setDateInput = async (locator, date, fieldName) => {
+        const element = await this.waitForVisible(locator, 30000);
+
+        // Set the native HTML date input value.
+        // This avoids Selenium sendKeys() date-format issues.
+        await this.driver.executeScript(
+            function (input, dateValue) {
+                const setter = Object.getOwnPropertyDescriptor(
+                    HTMLInputElement.prototype,
+                    "value"
+                ).set;
+
+                setter.call(input, dateValue);
+
+                // Notify AngularJS about the changed value.
+                input.dispatchEvent(
+                    new Event("input", { bubbles: true })
+                );
+
+                input.dispatchEvent(
+                    new Event("change", { bubbles: true })
+                );
+
+                input.dispatchEvent(
+                    new Event("blur", { bubbles: true })
+                );
+            },
+            element,
+            date
+        );
+
+        const actualValue = await element.getAttribute("value");
+
+        console.log(`${fieldName}: ${actualValue}`);
+
+        if (actualValue !== date) {
+            throw new Error(
+                `${fieldName} was not set correctly. ` +
+                `Expected: ${date}, Actual: ${actualValue}`
+            );
+        }
+    };
+
+    // Set From Date.
+    await setDateInput(
+        this.fromDateInput,
+        fromDate,
+        "From Date"
+    );
+
+    // Set To Date.
+    await setDateInput(
+        this.toDateInput,
+        toDate,
+        "To Date"
+    );
+
+    console.log("Both date fields were set successfully.");
+
+    return true;
+}
+
+
+async searchByDateRange(fromDate, toDate) {
+    // Step 1: Set both dates.
+    await this.setDateRange(fromDate, toDate);
+
+    // Step 2: Click Search.
+    await this.clickSearch();
+
+    // Step 3: Wait for the search to finish.
+    await this.waitForSearchToFinish(60000);
+
+    // Step 4: Return the search results.
+    return await this.getResults();
+}
+
+
+async selectCountryFromAutocomplete(inputLocator, countryName, fieldName) {
+    console.log(`Selecting ${fieldName}: ${countryName}`);
+
+    const input = await this.waitForVisible(inputLocator, 30000);
+
+    await input.click();
+    await input.clear();
+    await input.sendKeys(countryName);
+
+    console.log(`Typed ${fieldName}: ${countryName}`);
+
+    // Wait for autocomplete suggestions to appear.
+    const suggestionLocator = By.css(
+        "ul.md-autocomplete-suggestions li, " +
+        "md-autocomplete-suggestions li, " +
+        "md-virtual-repeat-container li, " +
+        "[role='option']"
+    );
+
+    await this.driver.wait(async () => {
+        const suggestions = await this.driver.findElements(
+            suggestionLocator
+        );
+
+        for (const suggestion of suggestions) {
+            try {
+                if (await suggestion.isDisplayed()) {
+                    const text = (await suggestion.getText())
+                        .replace(/\s+/g, " ")
+                        .trim();
+
+                    if (text.length > 0) {
+                        return true;
+                    }
+                }
+            } catch (error) {
+                // Ignore elements refreshed by AngularJS.
+            }
+        }
+
+        return false;
+    }, 15000, `${fieldName} suggestions did not appear for ${countryName}`);
+
+    // Find the exact matching country.
+    const suggestions = await this.driver.findElements(
+        suggestionLocator
+    );
+
+    let matchingOption = null;
+
+    for (const suggestion of suggestions) {
+        try {
+            if (!(await suggestion.isDisplayed())) {
+                continue;
+            }
+
+            const text = (await suggestion.getText())
+                .replace(/\s+/g, " ")
+                .trim();
+
+            if (
+                text.toLowerCase() === countryName.toLowerCase()
+            ) {
+                matchingOption = suggestion;
+                break;
+            }
+        } catch (error) {
+            // Ignore stale suggestion elements.
+        }
+    }
+
+    if (matchingOption) {
+        await matchingOption.click();
+    } else {
+        // Fallback: use Angular Material autocomplete keyboard selection.
+        console.log(
+            `Exact option not located. Trying keyboard selection for ${countryName}.`
+        );
+
+        await input.sendKeys(Key.ARROW_DOWN);
+        await input.sendKeys(Key.ENTER);
+    }
+
+    // Verify that the country was actually selected.
+    await this.driver.wait(async () => {
+        try {
+            const currentValue = (
+                await input.getAttribute("value") || ""
+            ).trim();
+
+            return currentValue.toLowerCase() ===
+                countryName.toLowerCase();
+        } catch (error) {
+            return false;
+        }
+    }, 15000, `${fieldName} was not selected: ${countryName}`);
+
+    console.log(`${fieldName} selected successfully: ${countryName}`);
+
+    return true;
+}
+
 
 
 
