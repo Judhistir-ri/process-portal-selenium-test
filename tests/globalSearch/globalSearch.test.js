@@ -10,6 +10,7 @@ const getDriver = require("../../utils/driver");
 const LoginPage = require("../../pages/Login");
 const NewPage = require("../../pages/NewPage");
 const GlobalSearchPage = require("../../pages/GlobalSearchPage");
+const TestReporter = require("../../utils/testReporter");
 
 // --------------------------------------------------
 // WAIT FOR EXCEL DOWNLOAD
@@ -79,6 +80,7 @@ describe("Processor Portal - Global Search Functional Test Cases", function () {
     let loginPage;
     let newPage;
     let globalSearchPage;
+    let activeReporter = null;
 
 
 async function runGlobalSearchScenarios({
@@ -269,6 +271,9 @@ console.log(
         newPage = new NewPage(driver);
         globalSearchPage = new GlobalSearchPage(driver);
 
+        // Centralized reporting instrumentation for all active test cases.
+        TestReporter.instrumentPageObject(globalSearchPage, () => activeReporter);
+
         // Step 3: Open login page.
         await loginPage.open();
 
@@ -293,13 +298,65 @@ console.log(
     });
 
     // --------------------------------------------------
-    // TEARDOWN
+    // PER-TEST REPORT INITIALIZATION
+    // --------------------------------------------------
+    beforeEach(function () {
+        activeReporter = new TestReporter(driver, this);
+        const title = this.currentTest?.title || "Unnamed test";
+        const testCaseId = (title.match(/TC_[A-Z]+_?\\d+/i) || [])[0] || "Not specified";
+
+        activeReporter.addTestInfo({
+            testCaseId,
+            testCase: title,
+            module: "Processor Portal - Global Search",
+            objective: title.replace(/^TC_[A-Z]+_?\\d+\\s*-\\s*/i, ""),
+            reportingNote: "Steps are captured from actual page-object actions and the test's existing assertions."
+        });
+    });
+
+    // --------------------------------------------------
+    // AUTOMATIC REPORT DETAILS, SCREENSHOT AND CLEANUP
     // --------------------------------------------------
     afterEach(async function () {
-        if (globalSearchPage) {
-            await globalSearchPage.clearSearchFilters();
+        const currentTest = this.currentTest;
+
+        if (currentTest && activeReporter) {
+            try {
+                const pageUrl = driver
+                    ? await driver.getCurrentUrl().catch(() => "URL unavailable")
+                    : "Browser unavailable";
+
+                activeReporter.addDetail("FINAL TEST STATUS", String(currentTest.state || "unknown").toUpperCase());
+                activeReporter.addDetail("EXECUTION DURATION", `${currentTest.duration || 0} ms`);
+                activeReporter.addDetail("FINAL BROWSER URL", pageUrl);
+
+                if (currentTest.state === "passed") {
+                    activeReporter.addDetail("FINAL ACTUAL RESULT", "All assertions in this test case completed successfully.");
+                }
+
+                if (currentTest.state === "failed" && currentTest.err) {
+                    activeReporter.addFailure(currentTest.err);
+                }
+
+                // Screenshot is captured before clearing search filters.
+                await activeReporter.attachScreenshot(`${currentTest.title} - ${currentTest.state || "completed"}`);
+            } catch (reportError) {
+                console.error("Could not attach Mochawesome report details:", reportError.message);
+            }
         }
-    })
+
+        // Preserve the original cleanup behavior.
+        if (globalSearchPage) {
+            try {
+                await globalSearchPage.clearSearchFilters();
+            } catch (cleanupError) {
+                console.error("Search filter cleanup failed:", cleanupError.message);
+                if (currentTest && currentTest.state === "passed") throw cleanupError;
+            }
+        }
+
+        activeReporter = null;
+    });
 
     after(async function () {
         if (driver) {
@@ -329,6 +386,16 @@ console.log(
         );
 
         expect(await exportButton.isDisplayed()).to.equal(true);
+
+        if (activeReporter) {
+            activeReporter.addStep(
+                1,
+                "Verify Global Search page and controls",
+                "Global Search page URL should be correct, and Search and Export to Excel buttons should be visible.",
+                `Current URL: ${currentUrl}; Search button visible: true; Export to Excel button visible: true.`,
+                "PASS"
+            );
+        }
     });
 
     // --------------------------------------------------
@@ -1630,6 +1697,17 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
         this.timeout(240000);
 
         const customerName = "JudhistirBehera";
+        const reporter = activeReporter || new TestReporter(driver, this);
+        reporter.disableAutomaticSteps = true;
+
+        reporter.addTestInfo({
+            testCaseId: "TC_GS_015",
+            module: "Processor Portal - Global Search",
+            feature: "Export Global Search results to Excel",
+            testData: `Customer: ${customerName}`,
+            expectedOverallResult:
+                "Matching documents should be displayed and a valid Excel file should download."
+        });
 
         // Use the same download directory configured in driver.js.
         const downloadDir = path.resolve(
@@ -1653,6 +1731,9 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
         await globalSearchPage.clearSearchFilters();
 
         console.log("Previous search filters cleared.");
+        reporter.addStep(1, "Clear previous search filters",
+            "All previous Global Search filters should be empty.",
+            "Previous search filters cleared successfully.", "PASS");
 
         // --------------------------------------------------
         // STEP 2: SELECT CUSTOMER
@@ -1663,6 +1744,9 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
         await globalSearchPage.selectCustomer(customerName);
 
         console.log("Customer selected successfully.");
+        reporter.addStep(2, "Select customer",
+            `Customer "${customerName}" should be selected in the Customer dropdown.`,
+            `Customer "${customerName}" selected successfully.`, "PASS");
 
         // --------------------------------------------------
         // STEP 3: CLICK SEARCH BUTTON
@@ -1671,6 +1755,9 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
         await globalSearchPage.clickSearch();
 
         console.log("Search button clicked.");
+        reporter.addStep(3, "Click Search",
+            "The application should start searching using the selected customer.",
+            "Search button clicked successfully.", "PASS");
 
         // --------------------------------------------------
         // STEP 4: WAIT FOR SEARCH LOADING TO COMPLETE
@@ -1682,6 +1769,9 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
         expect(searchStatus).to.equal("RESULTS");
 
         console.log("Search loading completed.");
+        reporter.addStep(4, "Wait for search completion",
+            "Search should complete and return matching results.",
+            `Search completed with status: ${searchStatus}.`, "PASS");
 
         // --------------------------------------------------
         // STEP 5: GET TOTAL DOCUMENTS FOUND
@@ -1697,6 +1787,10 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
             "Documents should be available before exporting."
         ).to.be.greaterThan(0);
 
+        reporter.addStep(5, "Verify total documents",
+            "The selected customer should have at least one matching document.",
+            `Total documents found: ${totalDocuments}.`, "PASS");
+
         // --------------------------------------------------
         // STEP 6: VERIFY RESULTS TABLE
         // --------------------------------------------------
@@ -1708,6 +1802,9 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
             );
 
         expect(await resultsTable.isDisplayed()).to.equal(true);
+        reporter.addStep(6, "Verify results table",
+            "The Global Search results table should be visible.",
+            "Results table is displayed.", "PASS");
 
         // --------------------------------------------------
         // STEP 7: GET PAGINATION DETAILS
@@ -1729,6 +1826,11 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
         expect(currentPageRows).to.be.greaterThan(0);
         expect(currentPageRows).to.be.at.most(totalDocuments);
         expect(totalPages).to.be.greaterThan(0);
+
+        reporter.addStep(7, "Verify pagination",
+            "Current page rows and total page count should be valid.",
+            `Current page rows: ${currentPageRows}; total pages: ${totalPages}.`,
+            "PASS");
 
         // --------------------------------------------------
         // STEP 8: CAPTURE EXISTING DOWNLOAD FILES
@@ -1758,6 +1860,9 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
         await globalSearchPage.exportToExcel();
 
         console.log("Export to Excel button clicked.");
+        reporter.addStep(8, "Click Export to Excel",
+            "The application should initiate the Excel export.",
+            "Export to Excel button clicked successfully.", "PASS");
 
         // --------------------------------------------------
         // STEP 10: WAIT FOR EXCEL DOWNLOAD
@@ -1769,6 +1874,11 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
             90000
         );
 
+        reporter.addStep(9, "Wait for Excel download",
+            "A completed .xls or .xlsx file should appear in the Downloads folder.",
+            `Downloaded file: ${downloadedFile.name}; path: ${downloadedFile.fullPath}.`,
+            "PASS");
+
         // --------------------------------------------------
         // STEP 11: VERIFY DOWNLOADED FILE
         // --------------------------------------------------
@@ -1778,6 +1888,20 @@ it("TC_GS_015 - Verify user can export Global Search results to Excel",
         expect(
             fs.existsSync(downloadedFile.fullPath)
         ).to.equal(true);
+
+        const downloadedFileStats = await fs.promises.stat(
+            downloadedFile.fullPath
+        );
+
+        reporter.addStep(10, "Verify downloaded Excel file",
+            "The downloaded file should exist, have an Excel extension, and have a non-zero file size.",
+            `File exists: true; file size: ${downloadedFileStats.size} bytes.`,
+            "PASS");
+
+        reporter.addDetail(
+            "Final Actual Result",
+            `Excel export completed. File: ${downloadedFile.name}; size: ${downloadedFileStats.size} bytes; documents found: ${totalDocuments}.`
+        );
 
         console.log("\n========== EXPORT SUMMARY ==========");
         console.log(`Customer Name       : ${customerName}`);
