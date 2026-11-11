@@ -1,8 +1,6 @@
-const {
-    Builder,
-    By,
-    until
-} = require("selenium-webdriver");
+const {Builder,By,until} = require("selenium-webdriver");
+const fs = require("fs");
+const path = require("path");
 
 const chrome = require("selenium-webdriver/chrome");
 const firefox = require("selenium-webdriver/firefox");
@@ -25,9 +23,27 @@ async function getDriver() {
     // CHROME
     // =====================================================
 
+   
+    // =====================================================
+    // CHROME
+    // =====================================================
+
     if (browser === "chrome") {
 
         const options = new chrome.Options();
+
+        // Configure project Downloads folder.
+        const downloadDir = path.resolve(
+            process.cwd(),
+            "Downloads"
+        );
+
+        // Create folder if it does not exist.
+        fs.mkdirSync(downloadDir, {
+            recursive: true
+        });
+
+        console.log("Chrome Download Directory:", downloadDir);
 
         options.addArguments(
             "--start-maximized",
@@ -37,6 +53,14 @@ async function getDriver() {
             "--disable-dev-shm-usage",
             "--no-sandbox"
         );
+
+        // Configure automatic downloads.
+        options.setUserPreferences({
+            "download.default_directory": downloadDir,
+            "download.prompt_for_download": false,
+            "download.directory_upgrade": true,
+            "safebrowsing.enabled": true
+        });
 
         builder
             .forBrowser("chrome")

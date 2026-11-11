@@ -87,8 +87,8 @@ class GlobalSearchPage {
             "input[type='date'][ng-model*='selectedEndDate']"
         );
 
-        this.trackingIdInput = By.css(
-            "input[placeholder='Tracking Id']"
+        this.trackingIdInput = By.xpath(
+            "//label[normalize-space()='Tracking Id']/following-sibling::input"
         );
 
         // Buttons: confirmed from the page's Angular markup
@@ -562,12 +562,16 @@ async waitForSearchToFinish(timeout = 60000) {
         return await this.getResults();
     }
 
-    async searchByTrackingId(trackingId) {
-        await this.enterText(this.trackingIdInput, trackingId);
-        await this.clickElement(this.searchButton);
-        await this.waitForSearchToFinish();
-
-        return await this.getResults();
+    async enterTrackingId(trackingId) {
+        const input = await this.waitForVisible(
+            this.trackingIdInput,
+            30000
+        );
+    
+        await input.clear();
+        await input.sendKeys(trackingId);
+    
+        console.log(`Tracking ID entered successfully: ${trackingId}`);
     }
 
     async search() {
@@ -1236,28 +1240,6 @@ trackSearchField(locator) {
         this.activeSearchFields.push(locator);
     }
 }
-
-
-// async clearSearchFilters() {
-//     console.log("Clearing fields used in this test...");
-
-//     for (const locator of this.activeSearchFields) {
-//         try {
-//             const elements = await this.driver.findElements(locator);
-
-//             if (elements.length > 0) {
-//                 await elements[0].clear();
-//                 console.log(`Cleared: ${locator}`);
-//             }
-//         } catch (error) {
-//             console.log(`Unable to clear field: ${error.message}`);
-//         }
-//     }
-
-//     this.activeSearchFields = [];
-
-//     console.log("Search fields cleared.");
-// }
 
 
 async clearSearchFilters() {
