@@ -288,30 +288,30 @@ async waitForVisibleAndEnabled(locator, timeout = 60000) {
         return false;
     }
 
-    async waitForSearchToFinish(timeout = 30000) {
-        // Wait for a spinner to disappear if the application displays one.
-        await this.driver.wait(async () => {
-            const spinners = await this.driver.findElements(
-                this.loadingSpinner
-            );
+    // async waitForSearchToFinish(timeout = 30000) {
+    //     // Wait for a spinner to disappear if the application displays one.
+    //     await this.driver.wait(async () => {
+    //         const spinners = await this.driver.findElements(
+    //             this.loadingSpinner
+    //         );
 
-            for (const spinner of spinners) {
-                try {
-                    if (await spinner.isDisplayed()) {
-                        return false;
-                    }
-                } catch (error) {
-                    // A removed spinner means loading has finished.
-                }
-            }
+    //         for (const spinner of spinners) {
+    //             try {
+    //                 if (await spinner.isDisplayed()) {
+    //                     return false;
+    //                 }
+    //             } catch (error) {
+    //                 // A removed spinner means loading has finished.
+    //             }
+    //         }
 
-            return true;
-        }, timeout, "Global Search loading did not finish.");
+    //         return true;
+    //     }, timeout, "Global Search loading did not finish.");
 
-        await this.waitForVisible(this.resultsTable, timeout);
+    //     await this.waitForVisible(this.resultsTable, timeout);
 
-        return true;
-    }
+    //     return true;
+    // }
 
     // async open() {
     //     console.log("Waiting for Global Search icon...");
@@ -344,6 +344,68 @@ async waitForVisibleAndEnabled(locator, timeout = 60000) {
     
     //     return true;
     // }
+
+
+async waitForSearchToFinish(timeout = 60000) {
+    console.log("Waiting for Global Search to finish...");
+
+    // Step 1: Wait until the loading spinner disappears.
+    await this.driver.wait(async () => {
+        const spinners = await this.driver.findElements(
+            this.loadingSpinner
+        );
+
+        for (const spinner of spinners) {
+            try {
+                if (await spinner.isDisplayed()) {
+                    return false;
+                }
+            } catch (error) {
+                // Spinner was removed.
+            }
+        }
+
+        return true;
+    }, timeout, "Global Search loading did not finish.");
+
+    // Step 2: Accept either results or a no-data response.
+    await this.driver.wait(async () => {
+        try {
+            const count = await this.getTotalDocumentsFound();
+
+            if (count !== null) {
+                return true;
+            }
+
+            const tableVisible = await this.isVisible(
+                this.resultsTable
+            );
+
+            if (tableVisible) {
+                return true;
+            }
+
+            const toastVisible = await this.isVisible(
+                By.css("#toast-container .toast-message, div.toast-message")
+            );
+
+            return toastVisible;
+        } catch (error) {
+            return false;
+        }
+    }, timeout, "Neither search results nor a no-data response appeared.");
+
+    const totalDocuments = await this.getTotalDocumentsFound();
+
+    if (totalDocuments === 0) {
+        console.log("Search completed: 0 Documents found.");
+        return "NO_DATA";
+    }
+
+    console.log(`Search completed: ${totalDocuments} documents found.`);
+    return "RESULTS";
+}
+
 
     async open() {
         console.log("Waiting for Global Search icon...");

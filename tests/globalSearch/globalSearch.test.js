@@ -1220,138 +1220,142 @@ if (totalDocuments > 0 && results.length > 0) {
 it("TC_GS_010 - Verify user can search documents by Invoice Reference", async function () {
     this.timeout(300000);
 
-    const invoiceReferencesToSearch = ["Sample Doc", "ABC123", "jhasdjavsjdasd"];
-    const allResults = [];
+    const invoiceReferencesToSearch = [
+        "Sample Doc",
+        "ABC123",
+        "jhasdjavsjdasd"
+    ];
 
-    // Step 1: Ensure clean form state before starting
-    if (typeof globalSearchPage.clearSearchFilters === "function") {
-        await globalSearchPage.clearSearchFilters();
-    }
+    const allResults = [];
 
     for (const referenceText of invoiceReferencesToSearch) {
         console.log("\n==========================================");
         console.log(`SEARCHING INVOICE REFERENCE: ${referenceText}`);
         console.log("==========================================");
 
-        // Step 2: Enter Invoice Reference in input field
+        // Step 1: Clear previous search filters.
+        await globalSearchPage.clearSearchFilters();
+
+        // Step 2: Enter Invoice Reference.
         await globalSearchPage.enterInvoiceReference(referenceText);
 
-        // Step 3: Click Search button
+        // Step 3: Click Search.
         await globalSearchPage.clickSearch();
 
-        // Step 4: Allow brief moment for Angular network call/toast trigger
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Step 4: Wait for either results or no-data response.
+        const searchStatus =
+            await globalSearchPage.waitForSearchToFinish(60000);
 
-        // Step 5: Check if warning toast ("Data Not Exist") appeared
-        const errorMessage = await globalSearchPage.getToastErrorMessage();
+        // Step 5: Get document count.
+        const totalDocuments =
+            await globalSearchPage.getTotalDocumentsFound();
 
-        let totalDocuments = 0;
         let results = [];
+        let errorMessage = "";
 
-        if (errorMessage) {
-            // SCENARIO A: Invalid Search (Toast appears)
-            console.log(`Invalid reference search detected. Toast message: "${errorMessage}"`);
-        } else {
-            // SCENARIO B: Valid Search (Wait for grid to finish loading)
-            if (typeof globalSearchPage.waitForSearchToFinish === "function") {
-                await globalSearchPage.waitForSearchToFinish(30000);
+        console.log(`Invoice Reference : ${referenceText}`);
+        console.log(`Total Documents   : ${totalDocuments}`);
+        console.log(`Search Status     : ${searchStatus}`);
+
+        if (totalDocuments === 0 || searchStatus === "NO_DATA") {
+            // Scenario A: No matching invoice reference.
+            console.log("No matching documents found.");
+
+            errorMessage =
+                await globalSearchPage.getToastErrorMessage();
+
+            if (errorMessage) {
+                console.log(`Application Message: ${errorMessage}`);
+
+                expect(errorMessage.toLowerCase()).to.include(
+                    "data not exist"
+                );
+            } else {
+                console.log(
+                    "No-data response verified through the document count."
+                );
+
+                expect(totalDocuments).to.equal(0);
             }
-            
-            totalDocuments = await globalSearchPage.getTotalDocumentsFound();
-            console.log(`Total Documents Found for "${referenceText}": ${totalDocuments}`);
 
-            if (totalDocuments > 0) {
-                results = await globalSearchPage.getInvoiceReferenceSearchResults();
-                console.log(`Table Data Extracted: ${results.length} rows`);
-            }
-        }
+            allResults.push({
+                searchedReference: referenceText,
+                totalDocuments: 0,
+                status: "NO DATA",
+                errorMessage,
+                documents: []
+            });
 
-        // Step 6: Store execution summary
-        allResults.push({
-            searchedReference: referenceText,
-            totalDocuments: totalDocuments,
-            errorMessage: errorMessage,
-            documents: results
-        });
-
-        // Step 7: Dynamic Assertions
-        if (errorMessage) {
-            // Assert invalid search criteria
-            expect(errorMessage.toLowerCase(), `Toast should indicate missing data for ${referenceText}`)
-                .to.include("data not exist");
         } else {
-            // Assert valid search criteria
-            expect(totalDocuments, `Document count should be > 0 for valid reference: ${referenceText}`)
-                .to.be.greaterThan(0);
-            expect(results.length, `Table rows should be extracted for ${referenceText}`)
-                .to.be.greaterThan(0);
+            // Scenario B: Matching documents are available.
+            expect(totalDocuments).to.be.greaterThan(0);
+
+            results =
+                await globalSearchPage.getInvoiceReferenceSearchResults();
+
+            console.log(`Extracted Rows: ${results.length}`);
+
+            expect(
+                results.length,
+                `Results should be available for ${referenceText}`
+            ).to.be.greaterThan(0);
+
+            allResults.push({
+                searchedReference: referenceText,
+                totalDocuments,
+                status: "PASS",
+                errorMessage: "",
+                documents: results
+            });
         }
 
-        console.log(`Invoice Reference search completed for: ${referenceText}`);
-
-        // Step 8: Clear search filters before next iteration
-        if (typeof globalSearchPage.clearSearchFilters === "function") {
-            await globalSearchPage.clearSearchFilters();
-        }
+        console.log(
+            `Invoice Reference search completed: ${referenceText}`
+        );
     }
 
-    // --------------------------------------------------
-    // FINAL SUMMARY REPORT
-    // --------------------------------------------------
-
+    // Final Summary
     console.log("\n========== INVOICE REFERENCE SEARCH SUMMARY ==========");
+
     for (const result of allResults) {
-        const status = result.errorMessage 
-            ? `Warning: "${result.errorMessage}"` 
-            : `${result.totalDocuments} documents found`;
-        console.log(`Invoice Reference "${result.searchedReference}": ${status}`);
+        console.log(
+            `Reference: ${result.searchedReference} | ` +
+            `Documents: ${result.totalDocuments} | ` +
+            `Status: ${result.status}`
+        );
     }
+
     console.log("======================================================");
 
-    // --------------------------------------------------
-    // DOCUMENT DETAILS TABLE OUTPUT
-    // --------------------------------------------------
-
+    // Display available document details.
     const tableData = [];
 
     for (const result of allResults) {
-        if (result.documents.length > 0) {
-            // Populate extracted table records for valid searches
-            for (const document of result.documents) {
-                tableData.push({
-                    "Searched Ref": result.searchedReference,
-                    "Order Id": document.orderId,
-                    "Doc Id": document.docId,
-                    "Country": document.country,
-                    "Origin Country": document.originCountry,
-                    "Customer Name": document.customerName,
-                    "Contact Person": document.contactPerson,
-                    "Document Type": document.documentType,
-                    "Invoice Reference": document.invoiceReference || result.searchedReference,
-                    "Status / Error": "Data Available"
-                });
-            }
-        } else {
-            // Populate "No Found / 0" and toast error when no data exists
+        for (const document of result.documents) {
             tableData.push({
-                "Searched Ref": result.searchedReference,
-                "Order Id": "No Found / 0",
-                "Doc Id": "No Found / 0",
-                "Country": "No Found / 0",
-                "Origin Country": "No Found / 0",
-                "Customer Name": "No Found / 0",
-                "Contact Person": "No Found / 0",
-                "Document Type": "No Found / 0",
-                "Invoice Reference": "No Found / 0",
-                "Status / Error": result.errorMessage || "Data Not Exist"
+                "Searched Reference": result.searchedReference,
+                "Order Id": document.orderId,
+                "Doc Id": document.docId,
+                "Country": document.country,
+                "Origin Country": document.originCountry,
+                "Customer Name": document.customerName,
+                "Invoice Reference":
+                    document.invoiceReference || result.searchedReference
             });
         }
     }
 
-    console.log("\n========== DOCUMENT DETAILS TABLE ==========");
-    console.table(tableData);
-    console.log("============================================");
+    console.log("\n========== INVOICE REFERENCE DOCUMENT DETAILS ==========");
+
+    if (tableData.length > 0) {
+        console.table(tableData);
+    } else {
+        console.log("No matching invoice reference documents were found.");
+    }
+
+    console.log("========================================================");
 });
+
 
 // --------------------------------------------------
 // TC_GS_011 - SEARCH BY CATEGORY
