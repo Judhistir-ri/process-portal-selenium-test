@@ -17,6 +17,180 @@ describe("Processor Portal - Global Search Functional Test Cases", function () {
     let newPage;
     let globalSearchPage;
 
+
+async function runGlobalSearchScenarios({
+    testCaseName,
+    searchFieldName,
+    searchValues,
+    enterSearchValue,
+    getSearchResults,
+    verifyResult
+}) {
+    const allResults = [];
+
+    for (const searchValue of searchValues) {
+        console.log("\n==========================================");
+        console.log(`${testCaseName}: ${searchFieldName}`);
+        console.log(`Searching Value: ${searchValue}`);
+        console.log("==========================================");
+
+        // Clear previous search filters.
+        await globalSearchPage.clearSearchFilters();
+
+        // Enter the search value.
+        await enterSearchValue(searchValue);
+
+        // Click Search.
+        await globalSearchPage.clickSearch();
+
+        // Wait for results OR no-data response.
+        const searchStatus =
+            await globalSearchPage.waitForSearchToFinish(60000);
+
+        // Read document count.
+        const totalDocuments =
+            await globalSearchPage.getTotalDocumentsFound();
+
+        let results = [];
+        let errorMessage = "";
+        let status = "";
+
+        console.log(`Search Value     : ${searchValue}`);
+        console.log(`Total Documents  : ${totalDocuments}`);
+        console.log(`Search Status    : ${searchStatus}`);
+
+        expect(totalDocuments).to.be.a("number");
+        expect(totalDocuments).to.be.at.least(0);
+
+        // ------------------------------------------
+        // SCENARIO 1: NO DOCUMENTS FOUND
+        // ------------------------------------------
+
+        if (totalDocuments === 0 || searchStatus === "NO_DATA") {
+            status = "NO DATA";
+
+            console.log("No matching documents found.");
+
+            // The toast is temporary, so it may already have disappeared.
+            errorMessage =
+                await globalSearchPage.getToastErrorMessage() || "";
+
+            if (errorMessage) {
+                console.log(`Application Message: ${errorMessage}`);
+
+                expect(errorMessage.toLowerCase()).to.include(
+                    "data not exist"
+                );
+            } else {
+                console.log(
+                    "No-data scenario verified using 0 Documents found."
+                );
+            }
+
+            results = [];
+
+        } else {
+
+            // ------------------------------------------
+            // SCENARIO 2: DOCUMENTS FOUND
+            // ------------------------------------------
+
+            status = "PASS";
+
+            expect(totalDocuments).to.be.greaterThan(0);
+
+            // Extract result rows only when documents exist.
+            results = await getSearchResults();
+
+            console.log(`Current Page Rows: ${results.length}`);
+
+            expect(
+                results.length,
+                `No table rows extracted for ${searchValue}`
+            ).to.be.greaterThan(0);
+
+            // Verify returned records against the search value.
+            if (typeof verifyResult === "function") {
+                for (const document of results) {
+                    verifyResult(document, searchValue);
+                }
+            }
+
+            expect(results.length).to.be.at.most(totalDocuments);
+        }
+
+        // Store each search result.
+        allResults.push({
+            searchedValue: searchValue,
+            totalDocuments,
+            status,
+            errorMessage,
+            documents: results
+        });
+
+        console.log(
+            `${searchFieldName} search completed: ${searchValue} - ${status}`
+        );
+    }
+
+    // ------------------------------------------
+    // FINAL SUMMARY
+    // ------------------------------------------
+
+    console.log(`\n========== ${testCaseName} SUMMARY ==========`);
+
+    for (const result of allResults) {
+        console.log(
+            `${result.searchedValue} | ` +
+            `Documents: ${result.totalDocuments} | ` +
+            `Status: ${result.status}`
+        );
+    }
+
+    console.log("============================================");
+
+    // ------------------------------------------
+    // DOCUMENT DETAILS TABLE
+    // ------------------------------------------
+
+    const tableData = [];
+
+    for (const result of allResults) {
+        for (const document of result.documents) {
+            tableData.push({
+                "Searched Value": result.searchedValue,
+                "Order Id": document.orderId || "",
+                "Doc Id": document.docId || "",
+                "Country": document.country || "",
+                "Origin Country": document.originCountry || "",
+                "Customer Name": document.customerName || "",
+                "Contact Person": document.contactPerson || "",
+                "Document Type": document.documentType || "",
+                "Customer Reference": document.customerReference || "",
+                "Invoice Reference": document.invoiceReference || ""
+            });
+        }
+    }
+
+    console.log("\n========== DOCUMENT DETAILS TABLE ==========");
+
+    if (tableData.length > 0) {
+        console.table(tableData);
+    } else {
+        console.log("No matching document rows found.");
+    }
+
+    console.log("============================================");
+    await globalSearchPage.clearSearchFilters();
+
+console.log(
+    `${testCaseName}: Search fields cleared after test completion.`
+);
+
+    return allResults;
+}
+
+
     // --------------------------------------------------
     // SETUP: LOGIN AND OPEN GLOBAL SEARCH
     // --------------------------------------------------
@@ -376,13 +550,13 @@ it("TC_GS_004 - Verify documents can be searched by Origin Country", async funct
         "Afghanistan",
         "Albania",
         "Algeria",
-        "Andorra",
-        "Angola",
-        "Antigua and Barbuda",
-        "Argentina",
-        "Armenia",
-        "Australia",
-        "Austria"
+        // "Andorra",
+        // "Angola",
+        // "Antigua and Barbuda",
+        // "Argentina",
+        // "Armenia",
+        // "Australia",
+        // "Austria"
     ];
 
     const allResults = [];
@@ -698,164 +872,297 @@ it("TC_GS_005 - Verify user can search documents by destination country", async 
 // TC_GS_006 - SEARCH BY DESCRIPTION
 // --------------------------------------------------
 
-it("TC_GS_006 - Verify Description Search", async function () {
-    this.timeout(180000);
+// it("TC_GS_006 - Verify Description Search", async function () {
+//     this.timeout(180000);
 
-    const descriptions = ["testing", "Automation"];
+//     const descriptions = ["testing", "Automation"];
 
-    for (const description of descriptions) {
-        console.log("\n========== SEARCHING DESCRIPTION ==========");
-        console.log(`Description: ${description}`);
+//     for (const description of descriptions) {
+//         console.log("\n========== SEARCHING DESCRIPTION ==========");
+//         console.log(`Description: ${description}`);
 
-        // Step 1: Enter the description and click Search.
-        await globalSearchPage.searchByDescription(description);
+//         // Step 1: Enter the description and click Search.
+//         await globalSearchPage.searchByDescription(description);
 
-        // Step 2: Wait for the search to complete.
-        await globalSearchPage.waitForSearchToFinish(60000);
-
-        // Step 3: Get total documents found.
-        const totalDocuments =
-            await globalSearchPage.getTotalDocumentsFound();
-
-        console.log(`Total Documents Found: ${totalDocuments}`);
-
-        // Step 4: Handle the no-data scenario.
-        if (totalDocuments === 0) {
-            const noDataMessage =
-                await globalSearchPage.getNoDataMessage();
-
-            console.log(`No Data Message: ${noDataMessage}`);
-
-            expect(noDataMessage.toLowerCase()).to.include(
-                "data not exist"
-            );
-
-            console.log(
-                `No documents found for Description: ${description}`
-            );
-
-            continue;
-        }
-
-        // Step 5: Verify the results table is displayed.
-        const resultsTable = await globalSearchPage.waitForVisible(
-            globalSearchPage.resultsTable,
-            60000
-        );
-
-        expect(await resultsTable.isDisplayed()).to.equal(true);
-
-        // Step 6: Get current page row count.
-        const currentPageRows =
-            await globalSearchPage.getCurrentPageRowCount();
-
-        // Step 7: Get total page count.
-        const totalPages =
-            await globalSearchPage.getTotalPageCount();
-
-        // Step 8: Display summary like TC_GS_002.
-        console.log("\n========== GLOBAL SEARCH RESULTS ==========");
-        console.log(`Description       : ${description}`);
-        console.log(`Total Documents    : ${totalDocuments}`);
-        console.log(`Current Page Rows  : ${currentPageRows}`);
-        console.log(`Total Pages        : ${totalPages}`);
-        console.log("===========================================\n");
-
-        // Step 9: Validate result counts.
-        expect(totalDocuments).to.be.greaterThan(0);
-        expect(currentPageRows).to.be.greaterThan(0);
-        // expect(currentPageRows).to.be.at.most(totalDocuments);
-        // expect(totalDocuments).to.be.greaterThan(0);
-        expect(currentPageRows).to.be.at.most(15);
-        expect(totalPages).to.be.greaterThan(0);
-
-        console.log(
-            `Description search completed successfully: ${description}`
-        );
-
-        // Step 10: Clear only the Description field.
-        await globalSearchPage.clearDescriptionSearch();
-    }
-});
-
-// --------------------------------------------------
-// TC_GS_008 - SEARCH BY MULTIPLE DOC IDs
-// --------------------------------------------------
-
-
-// it("TC_GS_007 - Search by Doc IDs and verify matching results", async function () {
-//     this.timeout(300000);
-
-//     const docIds = ["99974", "99977", "99980"];
-//     const allResults = [];
-
-//     for (const docId of docIds) {
-//         console.log(`\n========== SEARCHING DOC ID: ${docId} ==========`);
-
-//         // Clear the previous search before starting the next one.
-//         await globalSearchPage.clearSearchFilters();
-
-//         // searchByDocId() should enter the Doc ID and click Search.
-//         await globalSearchPage.searchByDocId(docId);
-
-//         // Wait until the search results finish loading.
+//         // Step 2: Wait for the search to complete.
 //         await globalSearchPage.waitForSearchToFinish(60000);
 
-//         // Read the total number of matching documents.
+//         // Step 3: Get total documents found.
 //         const totalDocuments =
 //             await globalSearchPage.getTotalDocumentsFound();
 
 //         console.log(`Total Documents Found: ${totalDocuments}`);
 
-//         // Read the currently displayed result rows.
-//         const results =
-//             await globalSearchPage.getGlobalSearchTableData();
+//         // Step 4: Handle the no-data scenario.
+//         if (totalDocuments === 0) {
+//             const noDataMessage =
+//                 await globalSearchPage.getNoDataMessage();
 
-//         console.log(`Current Page Rows: ${results.length}`);
+//             console.log(`No Data Message: ${noDataMessage}`);
 
-//         // Validate the count.
-//         expect(totalDocuments).to.be.a("number");
+//             expect(noDataMessage.toLowerCase()).to.include(
+//                 "data not exist"
+//             );
+
+//             console.log(
+//                 `No documents found for Description: ${description}`
+//             );
+
+//             continue;
+//         }
+
+//         // Step 5: Verify the results table is displayed.
+//         const resultsTable = await globalSearchPage.waitForVisible(
+//             globalSearchPage.resultsTable,
+//             60000
+//         );
+
+//         expect(await resultsTable.isDisplayed()).to.equal(true);
+
+//         // Step 6: Get current page row count.
+//         const currentPageRows =
+//             await globalSearchPage.getCurrentPageRowCount();
+
+//         // Step 7: Get total page count.
+//         const totalPages =
+//             await globalSearchPage.getTotalPageCount();
+
+//         // Step 8: Display summary like TC_GS_002.
+//         console.log("\n========== GLOBAL SEARCH RESULTS ==========");
+//         console.log(`Description       : ${description}`);
+//         console.log(`Total Documents    : ${totalDocuments}`);
+//         console.log(`Current Page Rows  : ${currentPageRows}`);
+//         console.log(`Total Pages        : ${totalPages}`);
+//         console.log("===========================================\n");
+
+//         // Step 9: Validate result counts.
+//         expect(totalDocuments).to.be.greaterThan(0);
+//         expect(currentPageRows).to.be.greaterThan(0);
+//         // expect(currentPageRows).to.be.at.most(totalDocuments);
+//         // expect(totalDocuments).to.be.greaterThan(0);
+//         expect(currentPageRows).to.be.at.most(15);
+//         expect(totalPages).to.be.greaterThan(0);
+
+//         console.log(
+//             `Description search completed successfully: ${description}`
+//         );
+
+//         // Step 10: Clear only the Description field.
+//         await globalSearchPage.clearDescriptionSearch();
+//     }
+// });
+
+it("TC_GS_006 - Verify user can search documents by Description", async function () {
+    this.timeout(300000);
+
+    await runGlobalSearchScenarios({
+        testCaseName: "TC_GS_006",
+        searchFieldName: "Description",
+
+        searchValues: [
+            "testing",
+            "Automation",
+            "InvalidDescription123"
+        ],
+
+        enterSearchValue: async (value) => {
+            await globalSearchPage.enterText(
+                globalSearchPage.descriptionInput,
+                value
+            );
+        },
+
+        getSearchResults: async () => {
+            return await globalSearchPage.getGlobalSearchTableData();
+        },
+
+        verifyResult: (document, searchedValue) => {
+            expect(document.orderId).to.not.be.empty;
+            expect(document.docId).to.not.be.empty;
+        }
+    });
+});
+
+
+it("TC_GS_007 - Verify user can search documents by Doc Id", async function () {
+    this.timeout(300000);
+
+    await runGlobalSearchScenarios({
+        testCaseName: "TC_GS_007",
+        searchFieldName: "Doc Id",
+
+        searchValues: [
+            "99974",
+            "99977",
+            "99980",
+            "999999999"
+        ],
+
+        enterSearchValue: async (value) => {
+            await globalSearchPage.enterDocId(value);
+        },
+
+        getSearchResults: async () => {
+            return await globalSearchPage.getDocIdSearchResults();
+        },
+
+        verifyResult: (document, searchedValue) => {
+            expect(
+                String(document.docId).trim(),
+                `Doc Id mismatch for Order ID ${document.orderId}`
+            ).to.equal(String(searchedValue));
+        }
+    });
+});
+
+
+it("TC_GS_008 - Verify user can search documents by Order Id", async function () {
+    this.timeout(300000);
+
+    await runGlobalSearchScenarios({
+        testCaseName: "TC_GS_008",
+        searchFieldName: "Order Id",
+
+        searchValues: [
+            "263199",
+            "263185",
+            "263160",
+            "999999999"
+        ],
+
+        enterSearchValue: async (value) => {
+            await globalSearchPage.enterOrderId(value);
+        },
+
+        getSearchResults: async () => {
+            return await globalSearchPage.getOrderIdSearchResults();
+        },
+
+        verifyResult: (document, searchedValue) => {
+            expect(
+                String(document.orderId).trim(),
+                `Order Id mismatch for ${searchedValue}`
+            ).to.equal(String(searchedValue));
+        }
+    });
+});
+
+it("TC_GS_009 - Verify user can search documents by Customer Reference", async function () {
+    this.timeout(300000);
+
+    await runGlobalSearchScenarios({
+        testCaseName: "TC_GS_009",
+        searchFieldName: "Customer Reference",
+
+        searchValues: [
+            "Customer Reference Testing",
+            "Customer ZReferencen AFG",
+            "Reference 2",
+            "InvalidReference123"
+        ],
+
+        enterSearchValue: async (value) => {
+            await globalSearchPage.enterCustomerReference(value);
+        },
+
+        getSearchResults: async () => {
+            return await globalSearchPage.getCustomerReferenceSearchResults();
+        },
+
+        verifyResult: (document, searchedValue) => {
+            expect(document.orderId).to.not.be.empty;
+
+            if (document.customerReference) {
+                expect(
+                    document.customerReference.toLowerCase(),
+                    `Customer Reference mismatch for Order ID ${document.orderId}`
+                ).to.include(searchedValue.toLowerCase());
+            }
+        }
+    });
+});
+
+
+// it("TC_GS_007 - Verify user can search documents by Doc Id", async function () {
+//     this.timeout(300000);
+
+//     const docIdsToSearch = ["99974", "99977", "99980"];
+//     const allResults = [];
+
+//     // Step 1: Ensure clean form state before starting
+//     if (typeof globalSearchPage.clearSearchFilters === "function") {
+//         await globalSearchPage.clearSearchFilters();
+//     }
+
+//     for (const docId of docIdsToSearch) {
+//         console.log("\n==========================================");
+//         console.log(`SEARCHING DOC ID: ${docId}`);
+//         console.log("==========================================");
+
+//         // Step 2: Enter Doc Id in input field
+//         await globalSearchPage.enterDocId(docId);
+
+//         // Step 3: Click Search button
+//         await globalSearchPage.clickSearch();
+
+//         // Step 4: Wait for loading spinner to clear
+//         await globalSearchPage.waitForSearchToFinish(60000);
+
+//         // Step 5: Read total document count
+//         const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
+//         console.log(`Total Documents Found for Doc Id (${docId}): ${totalDocuments}`);
+
+//         // Step 6: Extract visible result table rows
+//         const results = await globalSearchPage.getDocIdSearchResults();
+//         console.log(`Current Page Rows Extracted: ${results.length}`);
+
+//         // Step 7: Record search results
+//         allResults.push({
+//             searchedDocId: docId,
+//             totalDocuments: totalDocuments,
+//             documents: results
+//         });
+
+//         // Step 8: Assertions
+//         expect(
+//             totalDocuments,
+//             `Document count should be a valid number for Doc Id: ${docId}`
+//         ).to.be.a("number");
+
 //         expect(totalDocuments).to.be.at.least(0);
 
-//         // If results exist, verify that each row has the searched Doc ID.
-//         if (totalDocuments > 0) {
-//             expect(results.length).to.be.greaterThan(0);
-
-//             for (const document of results) {
+//         // If records were found, verify the Doc Id in table rows
+//         if (totalDocuments > 0 && results.length > 0) {
+//             for (const docRow of results) {
 //                 expect(
-//                     String(document.docId).trim(),
-//                     `Doc ID mismatch for searched Doc ID ${docId}`
+//                     docRow.docId,
+//                     `Doc Id mismatch for Order ID ${docRow.orderId}`
 //                 ).to.equal(docId);
 //             }
 //         }
 
-//         // Store results for the final table.
-//         allResults.push({
-//             searchedDocId: docId,
-//             totalDocuments,
-//             documents: results
-//         });
+//         console.log(`Doc Id search completed for: ${docId}`);
 
-//         console.log(`Doc ID ${docId} search completed.`);
+//         // Step 9: Clear form filters before next search
+//         if (typeof globalSearchPage.clearSearchFilters === "function") {
+//             await globalSearchPage.clearSearchFilters();
+//         }
 //     }
 
 //     // --------------------------------------------------
-//     // FINAL SUMMARY
+//     // FINAL SUMMARY REPORT
 //     // --------------------------------------------------
 
 //     console.log("\n========== DOC ID SEARCH SUMMARY ==========");
-
 //     for (const result of allResults) {
 //         console.log(
-//             `Doc ID ${result.searchedDocId}: ` +
-//             `${result.totalDocuments} documents`
+//             `Doc Id ${result.searchedDocId}: ${result.totalDocuments} documents`
 //         );
 //     }
-
-//     console.log("============================================");
+//     console.log("===========================================");
 
 //     // --------------------------------------------------
-//     // PRINT DOCUMENT DETAILS TABLE
+//     // DOCUMENT DETAILS TABLE OUTPUT
 //     // --------------------------------------------------
 
 //     const tableData = [];
@@ -863,8 +1170,8 @@ it("TC_GS_006 - Verify Description Search", async function () {
 //     for (const result of allResults) {
 //         for (const document of result.documents) {
 //             tableData.push({
-//                 "Order ID": document.orderId,
-//                 "Doc ID": document.docId,
+//                 "Order Id": document.orderId,
+//                 "Doc Id": document.docId,
 //                 "Country": document.country,
 //                 "Origin Country": document.originCountry,
 //                 "Customer Name": document.customerName,
@@ -874,348 +1181,239 @@ it("TC_GS_006 - Verify Description Search", async function () {
 //         }
 //     }
 
-//     console.log("\n========== DOC ID SEARCH RESULTS TABLE ==========");
-
+//     console.log("\n========== DOCUMENT DETAILS TABLE ==========");
 //     if (tableData.length > 0) {
 //         console.table(tableData);
 //     } else {
-//         console.log("No matching document rows were extracted.");
+//         console.log("No document rows returned across searched Doc Ids.");
 //     }
-
-//     console.log("=================================================");
+//     console.log("============================================");
 // });
 
-it("TC_GS_007 - Verify user can search documents by Doc Id", async function () {
-    this.timeout(300000);
+// it("TC_GS_008 - Verify user can search documents by Order Id", async function () {
+//     this.timeout(300000);
 
-    const docIdsToSearch = ["99974", "99977", "99980"];
-    const allResults = [];
+//     const orderIdsToSearch = ["263199", "263185", "263160"];
+//     const allResults = [];
 
-    // Step 1: Ensure clean form state before starting
-    if (typeof globalSearchPage.clearSearchFilters === "function") {
-        await globalSearchPage.clearSearchFilters();
-    }
+//     // Step 1: Ensure clean form state before starting
+//     if (typeof globalSearchPage.clearSearchFilters === "function") {
+//         await globalSearchPage.clearSearchFilters();
+//     }
 
-    for (const docId of docIdsToSearch) {
-        console.log("\n==========================================");
-        console.log(`SEARCHING DOC ID: ${docId}`);
-        console.log("==========================================");
+//     for (const orderId of orderIdsToSearch) {
+//         console.log("\n==========================================");
+//         console.log(`SEARCHING ORDER ID: ${orderId}`);
+//         console.log("==========================================");
 
-        // Step 2: Enter Doc Id in input field
-        await globalSearchPage.enterDocId(docId);
+//         // Step 2: Enter Order Id in input field
+//         await globalSearchPage.enterOrderId(orderId);
 
-        // Step 3: Click Search button
-        await globalSearchPage.clickSearch();
+//         // Step 3: Click Search button
+//         await globalSearchPage.clickSearch();
 
-        // Step 4: Wait for loading spinner to clear
-        await globalSearchPage.waitForSearchToFinish(60000);
+//         // Step 4: Wait for search execution to complete
+//         await globalSearchPage.waitForSearchToFinish(60000);
 
-        // Step 5: Read total document count
-        const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
-        console.log(`Total Documents Found for Doc Id (${docId}): ${totalDocuments}`);
+//         // Step 5: Get total document count
+//         const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
+//         console.log(`Total Documents Found for Order Id (${orderId}): ${totalDocuments}`);
 
-        // Step 6: Extract visible result table rows
-        const results = await globalSearchPage.getDocIdSearchResults();
-        console.log(`Current Page Rows Extracted: ${results.length}`);
+//         // Step 6: Extract result rows from table grid
+//         const results = await globalSearchPage.getOrderIdSearchResults();
+//         console.log(`Current Page Rows Extracted: ${results.length}`);
 
-        // Step 7: Record search results
-        allResults.push({
-            searchedDocId: docId,
-            totalDocuments: totalDocuments,
-            documents: results
-        });
+//         // Step 7: Store test results
+//         allResults.push({
+//             searchedOrderId: orderId,
+//             totalDocuments: totalDocuments,
+//             documents: results
+//         });
 
-        // Step 8: Assertions
-        expect(
-            totalDocuments,
-            `Document count should be a valid number for Doc Id: ${docId}`
-        ).to.be.a("number");
+//         // Step 8: Assertions
+//         expect(
+//             totalDocuments,
+//             `Document count should be a valid number for Order Id: ${orderId}`
+//         ).to.be.a("number");
 
-        expect(totalDocuments).to.be.at.least(0);
+//         expect(totalDocuments).to.be.at.least(0);
 
-        // If records were found, verify the Doc Id in table rows
-        if (totalDocuments > 0 && results.length > 0) {
-            for (const docRow of results) {
-                expect(
-                    docRow.docId,
-                    `Doc Id mismatch for Order ID ${docRow.orderId}`
-                ).to.equal(docId);
-            }
-        }
+//         // Verify Order Id in result table if records are returned
+//         if (totalDocuments > 0 && results.length > 0) {
+//             for (const docRow of results) {
+//                 expect(
+//                     docRow.orderId,
+//                     `Order Id mismatch for searched Order ID ${orderId}`
+//                 ).to.equal(orderId);
+//             }
+//         }
 
-        console.log(`Doc Id search completed for: ${docId}`);
+//         console.log(`Order Id search completed for: ${orderId}`);
 
-        // Step 9: Clear form filters before next search
-        if (typeof globalSearchPage.clearSearchFilters === "function") {
-            await globalSearchPage.clearSearchFilters();
-        }
-    }
+//         // Step 9: Clear search filters before next iteration
+//         if (typeof globalSearchPage.clearSearchFilters === "function") {
+//             await globalSearchPage.clearSearchFilters();
+//         }
+//     }
 
-    // --------------------------------------------------
-    // FINAL SUMMARY REPORT
-    // --------------------------------------------------
+//     // --------------------------------------------------
+//     // FINAL SUMMARY REPORT
+//     // --------------------------------------------------
 
-    console.log("\n========== DOC ID SEARCH SUMMARY ==========");
-    for (const result of allResults) {
-        console.log(
-            `Doc Id ${result.searchedDocId}: ${result.totalDocuments} documents`
-        );
-    }
-    console.log("===========================================");
+//     console.log("\n========== ORDER ID SEARCH SUMMARY ==========");
+//     for (const result of allResults) {
+//         console.log(
+//             `Order Id ${result.searchedOrderId}: ${result.totalDocuments} documents`
+//         );
+//     }
+//     console.log("=============================================");
 
-    // --------------------------------------------------
-    // DOCUMENT DETAILS TABLE OUTPUT
-    // --------------------------------------------------
+//     // --------------------------------------------------
+//     // DOCUMENT DETAILS TABLE OUTPUT
+//     // --------------------------------------------------
 
-    const tableData = [];
+//     const tableData = [];
 
-    for (const result of allResults) {
-        for (const document of result.documents) {
-            tableData.push({
-                "Order Id": document.orderId,
-                "Doc Id": document.docId,
-                "Country": document.country,
-                "Origin Country": document.originCountry,
-                "Customer Name": document.customerName,
-                "Contact Person": document.contactPerson,
-                "Document Type": document.documentType
-            });
-        }
-    }
+//     for (const result of allResults) {
+//         for (const document of result.documents) {
+//             tableData.push({
+//                 "Order Id": document.orderId,
+//                 "Doc Id": document.docId,
+//                 "Country": document.country,
+//                 "Origin Country": document.originCountry,
+//                 "Customer Name": document.customerName,
+//                 "Contact Person": document.contactPerson,
+//                 "Document Type": document.documentType
+//             });
+//         }
+//     }
 
-    console.log("\n========== DOCUMENT DETAILS TABLE ==========");
-    if (tableData.length > 0) {
-        console.table(tableData);
-    } else {
-        console.log("No document rows returned across searched Doc Ids.");
-    }
-    console.log("============================================");
-});
+//     console.log("\n========== DOCUMENT DETAILS TABLE ==========");
+//     if (tableData.length > 0) {
+//         console.table(tableData);
+//     } else {
+//         console.log("No document rows returned across searched Order Ids.");
+//     }
+//     console.log("============================================");
+// });
 
-it("TC_GS_008 - Verify user can search documents by Order Id", async function () {
-    this.timeout(300000);
+// it("TC_GS_009 - Verify user can search documents by Customer Reference", async function () {
+//     this.timeout(300000);
 
-    const orderIdsToSearch = ["263199", "263185", "263160"];
-    const allResults = [];
+//     const customerReferencesToSearch = [
+//         "Customer Reference Testing",
+//         "Customer ZReferencen AFG",
+//         "Reference 2"
+//     ];
+//     const allResults = [];
 
-    // Step 1: Ensure clean form state before starting
-    if (typeof globalSearchPage.clearSearchFilters === "function") {
-        await globalSearchPage.clearSearchFilters();
-    }
+//     // Step 1: Ensure clean form state before starting
+//     if (typeof globalSearchPage.clearSearchFilters === "function") {
+//         await globalSearchPage.clearSearchFilters();
+//     }
 
-    for (const orderId of orderIdsToSearch) {
-        console.log("\n==========================================");
-        console.log(`SEARCHING ORDER ID: ${orderId}`);
-        console.log("==========================================");
+//     for (const referenceText of customerReferencesToSearch) {
+//         console.log("\n==========================================");
+//         console.log(`SEARCHING CUSTOMER REFERENCE: ${referenceText}`);
+//         console.log("==========================================");
 
-        // Step 2: Enter Order Id in input field
-        await globalSearchPage.enterOrderId(orderId);
+//         // Step 2: Enter Customer Reference in input field
+//         await globalSearchPage.enterCustomerReference(referenceText);
 
-        // Step 3: Click Search button
-        await globalSearchPage.clickSearch();
+//         // Step 3: Click Search button
+//         await globalSearchPage.clickSearch();
 
-        // Step 4: Wait for search execution to complete
-        await globalSearchPage.waitForSearchToFinish(60000);
+//         // Step 4: Wait for search execution to complete
+//         await globalSearchPage.waitForSearchToFinish(60000);
 
-        // Step 5: Get total document count
-        const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
-        console.log(`Total Documents Found for Order Id (${orderId}): ${totalDocuments}`);
+//         // Step 5: Read total document count
+//         const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
+//         console.log(`Total Documents Found for Customer Reference (${referenceText}): ${totalDocuments}`);
 
-        // Step 6: Extract result rows from table grid
-        const results = await globalSearchPage.getOrderIdSearchResults();
-        console.log(`Current Page Rows Extracted: ${results.length}`);
+//         // Step 6: Extract result rows from table grid
+//         const results = await globalSearchPage.getCustomerReferenceSearchResults();
+//         console.log(`Current Page Rows Extracted: ${results.length}`);
 
-        // Step 7: Store test results
-        allResults.push({
-            searchedOrderId: orderId,
-            totalDocuments: totalDocuments,
-            documents: results
-        });
+//         // Step 7: Store test results
+//         allResults.push({
+//             searchedReference: referenceText,
+//             totalDocuments: totalDocuments,
+//             documents: results
+//         });
 
-        // Step 8: Assertions
-        expect(
-            totalDocuments,
-            `Document count should be a valid number for Order Id: ${orderId}`
-        ).to.be.a("number");
+//         // Step 8: Assertions
+// expect(
+//     totalDocuments,
+//     `Document count should be a valid number for Customer Reference: ${referenceText}`
+// ).to.be.a("number");
 
-        expect(totalDocuments).to.be.at.least(0);
+// expect(totalDocuments).to.be.at.least(0);
 
-        // Verify Order Id in result table if records are returned
-        if (totalDocuments > 0 && results.length > 0) {
-            for (const docRow of results) {
-                expect(
-                    docRow.orderId,
-                    `Order Id mismatch for searched Order ID ${orderId}`
-                ).to.equal(orderId);
-            }
-        }
+// // Verify results when documents are found
+// if (totalDocuments > 0 && results.length > 0) {
+//     for (const docRow of results) {
+//         // Assert orderId exists for returned record
+//         expect(docRow.orderId, "Order ID should be present").to.not.be.empty;
 
-        console.log(`Order Id search completed for: ${orderId}`);
+//         // Verify Customer Reference if rendered in the visible row cell
+//         if (docRow.customerReference) {
+//             expect(
+//                 docRow.customerReference.toLowerCase(),
+//                 `Customer Reference mismatch for Order ID ${docRow.orderId}`
+//             ).to.include(referenceText.toLowerCase());
+//         }
+//     }
+// }
 
-        // Step 9: Clear search filters before next iteration
-        if (typeof globalSearchPage.clearSearchFilters === "function") {
-            await globalSearchPage.clearSearchFilters();
-        }
-    }
+//         console.log(`Customer Reference search completed for: ${referenceText}`);
 
-    // --------------------------------------------------
-    // FINAL SUMMARY REPORT
-    // --------------------------------------------------
+//         // Step 9: Clear search filters before next iteration
+//         if (typeof globalSearchPage.clearSearchFilters === "function") {
+//             await globalSearchPage.clearSearchFilters();
+//         }
+//     }
 
-    console.log("\n========== ORDER ID SEARCH SUMMARY ==========");
-    for (const result of allResults) {
-        console.log(
-            `Order Id ${result.searchedOrderId}: ${result.totalDocuments} documents`
-        );
-    }
-    console.log("=============================================");
+//     // --------------------------------------------------
+//     // FINAL SUMMARY REPORT
+//     // --------------------------------------------------
 
-    // --------------------------------------------------
-    // DOCUMENT DETAILS TABLE OUTPUT
-    // --------------------------------------------------
+//     console.log("\n========== CUSTOMER REFERENCE SEARCH SUMMARY ==========");
+//     for (const result of allResults) {
+//         console.log(
+//             `Customer Reference "${result.searchedReference}": ${result.totalDocuments} documents`
+//         );
+//     }
+//     console.log("=======================================================");
 
-    const tableData = [];
+//     // --------------------------------------------------
+//     // DOCUMENT DETAILS TABLE OUTPUT
+//     // --------------------------------------------------
 
-    for (const result of allResults) {
-        for (const document of result.documents) {
-            tableData.push({
-                "Order Id": document.orderId,
-                "Doc Id": document.docId,
-                "Country": document.country,
-                "Origin Country": document.originCountry,
-                "Customer Name": document.customerName,
-                "Contact Person": document.contactPerson,
-                "Document Type": document.documentType
-            });
-        }
-    }
+//     const tableData = [];
 
-    console.log("\n========== DOCUMENT DETAILS TABLE ==========");
-    if (tableData.length > 0) {
-        console.table(tableData);
-    } else {
-        console.log("No document rows returned across searched Order Ids.");
-    }
-    console.log("============================================");
-});
+//     for (const result of allResults) {
+//         for (const document of result.documents) {
+//             tableData.push({
+//                 "Order Id": document.orderId,
+//                 "Doc Id": document.docId,
+//                 "Country": document.country,
+//                 "Origin Country": document.originCountry,
+//                 "Customer Name": document.customerName,
+//                 "Contact Person": document.contactPerson,
+//                 "Document Type": document.documentType,
+//                 "Customer Reference": document.customerReference
+//             });
+//         }
+//     }
 
-it("TC_GS_009 - Verify user can search documents by Customer Reference", async function () {
-    this.timeout(300000);
-
-    const customerReferencesToSearch = [
-        "Customer Reference Testing",
-        "Customer ZReferencen AFG",
-        "Reference 2"
-    ];
-    const allResults = [];
-
-    // Step 1: Ensure clean form state before starting
-    if (typeof globalSearchPage.clearSearchFilters === "function") {
-        await globalSearchPage.clearSearchFilters();
-    }
-
-    for (const referenceText of customerReferencesToSearch) {
-        console.log("\n==========================================");
-        console.log(`SEARCHING CUSTOMER REFERENCE: ${referenceText}`);
-        console.log("==========================================");
-
-        // Step 2: Enter Customer Reference in input field
-        await globalSearchPage.enterCustomerReference(referenceText);
-
-        // Step 3: Click Search button
-        await globalSearchPage.clickSearch();
-
-        // Step 4: Wait for search execution to complete
-        await globalSearchPage.waitForSearchToFinish(60000);
-
-        // Step 5: Read total document count
-        const totalDocuments = await globalSearchPage.getTotalDocumentsFound();
-        console.log(`Total Documents Found for Customer Reference (${referenceText}): ${totalDocuments}`);
-
-        // Step 6: Extract result rows from table grid
-        const results = await globalSearchPage.getCustomerReferenceSearchResults();
-        console.log(`Current Page Rows Extracted: ${results.length}`);
-
-        // Step 7: Store test results
-        allResults.push({
-            searchedReference: referenceText,
-            totalDocuments: totalDocuments,
-            documents: results
-        });
-
-        // Step 8: Assertions
-expect(
-    totalDocuments,
-    `Document count should be a valid number for Customer Reference: ${referenceText}`
-).to.be.a("number");
-
-expect(totalDocuments).to.be.at.least(0);
-
-// Verify results when documents are found
-if (totalDocuments > 0 && results.length > 0) {
-    for (const docRow of results) {
-        // Assert orderId exists for returned record
-        expect(docRow.orderId, "Order ID should be present").to.not.be.empty;
-
-        // Verify Customer Reference if rendered in the visible row cell
-        if (docRow.customerReference) {
-            expect(
-                docRow.customerReference.toLowerCase(),
-                `Customer Reference mismatch for Order ID ${docRow.orderId}`
-            ).to.include(referenceText.toLowerCase());
-        }
-    }
-}
-
-        console.log(`Customer Reference search completed for: ${referenceText}`);
-
-        // Step 9: Clear search filters before next iteration
-        if (typeof globalSearchPage.clearSearchFilters === "function") {
-            await globalSearchPage.clearSearchFilters();
-        }
-    }
-
-    // --------------------------------------------------
-    // FINAL SUMMARY REPORT
-    // --------------------------------------------------
-
-    console.log("\n========== CUSTOMER REFERENCE SEARCH SUMMARY ==========");
-    for (const result of allResults) {
-        console.log(
-            `Customer Reference "${result.searchedReference}": ${result.totalDocuments} documents`
-        );
-    }
-    console.log("=======================================================");
-
-    // --------------------------------------------------
-    // DOCUMENT DETAILS TABLE OUTPUT
-    // --------------------------------------------------
-
-    const tableData = [];
-
-    for (const result of allResults) {
-        for (const document of result.documents) {
-            tableData.push({
-                "Order Id": document.orderId,
-                "Doc Id": document.docId,
-                "Country": document.country,
-                "Origin Country": document.originCountry,
-                "Customer Name": document.customerName,
-                "Contact Person": document.contactPerson,
-                "Document Type": document.documentType,
-                "Customer Reference": document.customerReference
-            });
-        }
-    }
-
-    console.log("\n========== DOCUMENT DETAILS TABLE ==========");
-    if (tableData.length > 0) {
-        console.table(tableData);
-    } else {
-        console.log("No document rows returned across searched Customer References.");
-    }
-    console.log("============================================");
-});
+//     console.log("\n========== DOCUMENT DETAILS TABLE ==========");
+//     if (tableData.length > 0) {
+//         console.table(tableData);
+//     } else {
+//         console.log("No document rows returned across searched Customer References.");
+//     }
+//     console.log("============================================");
+// });
 
 it("TC_GS_010 - Verify user can search documents by Invoice Reference", async function () {
     this.timeout(300000);

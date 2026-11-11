@@ -257,19 +257,40 @@ async waitForVisibleAndEnabled(locator, timeout = 60000) {
         return true;
     }
 
-    async enterText(locator, value) {
-        const element = await this.waitForVisible(locator);
+    // async enterText(locator, value) {
+    //     const element = await this.waitForVisible(locator);
 
-        await this.driver.executeScript(
-            "arguments[0].scrollIntoView({block:'center'});",
-            element
-        );
+    //     await this.driver.executeScript(
+    //         "arguments[0].scrollIntoView({block:'center'});",
+    //         element
+    //     );
 
-        await element.clear();
-        await element.sendKeys(String(value));
+    //     await element.clear();
+    //     await element.sendKeys(String(value));
 
-        return true;
-    }
+    //     return true;
+    // }
+
+async enterText(locator, value) {
+    const element = await this.waitForVisible(locator);
+
+    await this.driver.executeScript(
+        "arguments[0].scrollIntoView({block:'center'});",
+        element
+    );
+
+    await element.click();
+    await element.clear();
+    await element.sendKeys(String(value));
+
+    // Register this field so clearSearchFilters() can clear it.
+    this.trackSearchField(locator);
+
+    console.log(`Entered search value: ${value}`);
+
+    return true;
+}
+
 
     async clearField(locator) {
         const elements = await this.driver.findElements(locator);
@@ -1216,61 +1237,71 @@ trackSearchField(locator) {
     }
 }
 
+
 // async clearSearchFilters() {
-//     console.time("clearSearchFilters");
+//     console.log("Clearing fields used in this test...");
 
-//     const fields = [
-//         this.customerNameInput,
-//         this.userNameInput,
-//         this.descriptionInput,
-//         this.docIdInput,
-//         this.orderIdInput,
-//         this.customerReferenceInput,
-//         this.invoiceReferenceInput,
-//         this.trackingIdInput
-//     ];
-
-//     for (const locator of fields) {
-//         if (!locator) continue;
-
-//         console.time(`clear field: ${locator}`);
-
+//     for (const locator of this.activeSearchFields) {
 //         try {
 //             const elements = await this.driver.findElements(locator);
 
 //             if (elements.length > 0) {
 //                 await elements[0].clear();
+//                 console.log(`Cleared: ${locator}`);
 //             }
 //         } catch (error) {
-//             console.log(error.message);
+//             console.log(`Unable to clear field: ${error.message}`);
 //         }
-
-//         console.timeEnd(`clear field: ${locator}`);
 //     }
 
-//     console.timeEnd("clearSearchFilters");
+//     this.activeSearchFields = [];
+
+//     console.log("Search fields cleared.");
 // }
 
+
 async clearSearchFilters() {
-    console.log("Clearing fields used in this test...");
+    console.log("========== CLEARING SEARCH FILTERS ==========");
 
     for (const locator of this.activeSearchFields) {
         try {
             const elements = await this.driver.findElements(locator);
 
-            if (elements.length > 0) {
-                await elements[0].clear();
-                console.log(`Cleared: ${locator}`);
+            for (const element of elements) {
+                if (await element.isDisplayed()) {
+                    await element.clear();
+
+                    // Verify the input is empty.
+                    const value = await element.getAttribute("value");
+
+                    if (value && value.trim() !== "") {
+                        await element.sendKeys(
+                            require("selenium-webdriver").Key.CONTROL,
+                            "a"
+                        );
+                        await element.sendKeys(
+                            require("selenium-webdriver").Key.BACK_SPACE
+                        );
+                    }
+
+                    console.log(`Cleared field: ${locator}`);
+                }
             }
         } catch (error) {
-            console.log(`Unable to clear field: ${error.message}`);
+            console.log(
+                `Unable to clear field ${locator}: ${error.message}`
+            );
         }
     }
 
     this.activeSearchFields = [];
 
-    console.log("Search fields cleared.");
+    console.log("All registered search fields cleared.");
+    console.log("============================================");
+
+    return true;
 }
+
 
 // --------------------------------------------------
 // GET GLOBAL SEARCH TABLE DATA
