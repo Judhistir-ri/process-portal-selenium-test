@@ -13,6 +13,7 @@ const ExpectedDetailsPage = require("../../pages/ExpectedDetailsPage");
 const DropOffDetail = require("../../pages/DropOffDetail");
 const PickupDetail = require("../../pages/PickupDetail");
 const ShipToCustomerDetail = require("../../pages/ShipToCustomerDetail");
+const TestReporter = require("../../utils/testReporter");
 
 require("dotenv").config({ override: true });
 
@@ -29,6 +30,7 @@ describe("All Test Case - processorPortal AllT Test Cases", function () {
   let dropOffDetail;
   let pickupPage;
   let shipPage;
+  let activeReporter = null;
 
   // Expected Details test variables
   // let testAddress = null;
@@ -51,6 +53,21 @@ describe("All Test Case - processorPortal AllT Test Cases", function () {
     pickupPage = new PickupDetail(driver);
     shipPage = new ShipToCustomerDetail(driver);
 
+    // Automatically capture page-object actions as report steps.
+    // The reporter callback is resolved for each test, so every nested
+    // suite writes to the currently active test report.
+    [
+      loginPage,
+      newPage,
+      expectedPage,
+      expectedDetailsPage,
+      dropOffDetail,
+      pickupPage,
+      shipPage,
+    ].forEach((pageObject) => {
+      TestReporter.instrumentPageObject(pageObject, () => activeReporter);
+    });
+
     await loginPage.open();
 
     await loginPage.login(
@@ -61,6 +78,83 @@ describe("All Test Case - processorPortal AllT Test Cases", function () {
     await newPage.waitForPage();
 
     console.log("✓ Login successful. Starting all test cases.");
+  });
+
+  // --------------------------------------------------
+  // PER-TEST REPORT INITIALIZATION
+  // Applies to every nested Expected, DropOff, Pickup and Ship suite.
+  // --------------------------------------------------
+  beforeEach(function () {
+    activeReporter = new TestReporter(driver, this);
+
+    const title = this.currentTest?.title || "Unnamed test";
+    const testCaseId =
+      (title.match(/\b(TC_[A-Z]+_?\d+)\b/i) || [])[1] ||
+      "Not specified";
+
+    const objective = title
+      .replace(/^TC_[A-Z]+_?\d+\s*-\s*/i, "")
+      .trim();
+
+    const moduleName = this.currentTest?.parent?.title ||
+      "Processor Portal";
+
+    activeReporter.addTestInfo({
+      testCaseId,
+      testCase: title,
+      module: moduleName,
+      objective,
+      reportingNote:
+        "Page-object actions are captured automatically. Final status, duration, browser URL, failure details and screenshot are attached after each test."
+    });
+  });
+
+  // --------------------------------------------------
+  // AUTOMATIC REPORT DETAILS, FAILURE AND SCREENSHOT
+  // --------------------------------------------------
+  afterEach(async function () {
+    const currentTest = this.currentTest;
+
+    if (currentTest && activeReporter) {
+      try {
+        const pageUrl = driver
+          ? await driver.getCurrentUrl().catch(() => "URL unavailable")
+          : "Browser unavailable";
+
+        activeReporter.addDetail(
+          "FINAL TEST STATUS",
+          String(currentTest.state || "unknown").toUpperCase()
+        );
+        activeReporter.addDetail(
+          "EXECUTION DURATION",
+          `${currentTest.duration || 0} ms`
+        );
+        activeReporter.addDetail("FINAL BROWSER URL", pageUrl);
+
+        if (currentTest.state === "passed") {
+          activeReporter.addDetail(
+            "FINAL ACTUAL RESULT",
+            "All assertions in this test case completed successfully."
+          );
+        }
+
+        if (currentTest.state === "failed" && currentTest.err) {
+          activeReporter.addFailure(currentTest.err);
+        }
+
+        // Capture evidence before any later browser navigation or teardown.
+        await activeReporter.attachScreenshot(
+          `${currentTest.title} - ${currentTest.state || "completed"}`
+        );
+      } catch (reportError) {
+        console.error(
+          "Could not attach Mochawesome report details:",
+          reportError.message
+        );
+      }
+    }
+
+    activeReporter = null;
   });
 
   // Close browser only after all test cases finish
@@ -4935,4 +5029,3 @@ it("TC_SHIP_007 - Search Order IDs 263097, 263098 and Doc ID 99824 in Filter Any
 // This closes the main processorPortalAllTest describe.
 
 })
-
