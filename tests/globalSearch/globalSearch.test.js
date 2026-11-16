@@ -16,60 +16,123 @@ const TestReporter = require("../../utils/testReporter");
 // WAIT FOR EXCEL DOWNLOAD
 // --------------------------------------------------
 
-async function waitForExcelDownload(
-    downloadDir,
-    existingFiles = [],
-    timeout = 90000
-) {
+// async function waitForExcelDownload(
+//     downloadDir,
+//     existingFiles = [],
+//     timeout = 90000
+// ) {
+//     console.log("Waiting for Excel file download...");
+
+//     const startTime = Date.now();
+
+//     while (Date.now() - startTime < timeout) {
+
+//         const files = await fs.promises.readdir(downloadDir);
+
+//         // Check for an Excel file.
+//         const excelFiles = files.filter(file =>
+//             /\.(xlsx|xls)$/i.test(file) &&
+//             !existingFiles.includes(file)
+//         );
+
+//         // Check whether Chrome is still downloading.
+//         const downloadingFiles = files.filter(file =>
+//             file.endsWith(".crdownload")
+//         );
+
+//         if (excelFiles.length > 0 && downloadingFiles.length === 0) {
+
+//             const downloadedFile = excelFiles
+//                 .map(file => ({
+//                     name: file,
+//                     fullPath: path.join(downloadDir, file)
+//                 }))
+//                 .sort((a, b) => {
+//                     return fs.statSync(b.fullPath).mtimeMs -
+//                            fs.statSync(a.fullPath).mtimeMs;
+//                 })[0];
+
+//             const stats = await fs.promises.stat(
+//                 downloadedFile.fullPath
+//             );
+
+//             expect(stats.size).to.be.greaterThan(0);
+
+//             console.log("Excel file downloaded successfully.");
+//             console.log(`File Name: ${downloadedFile.name}`);
+//             console.log(`File Size: ${stats.size} bytes`);
+
+//             return downloadedFile;
+//         }
+
+//         await new Promise(resolve => setTimeout(resolve, 1000));
+//     }
+
+//     throw new Error(
+//         `Excel download failed. No completed Excel file found within ${timeout}ms.`
+//     );
+// }
+
+async function waitForExcelDownload(downloadDir, existingFiles = {}, timeout = 90000) {
     console.log("Waiting for Excel file download...");
 
     const startTime = Date.now();
+    const stableFiles = new Map();
 
     while (Date.now() - startTime < timeout) {
-
         const files = await fs.promises.readdir(downloadDir);
 
-        // Check for an Excel file.
-        const excelFiles = files.filter(file =>
-            /\.(xlsx|xls)$/i.test(file) &&
-            !existingFiles.includes(file)
-        );
-
-        // Check whether Chrome is still downloading.
+        // Chrome temporary download files.
         const downloadingFiles = files.filter(file =>
-            file.endsWith(".crdownload")
+            /\.(crdownload|tmp|part)$/i.test(file)
         );
 
-        if (excelFiles.length > 0 && downloadingFiles.length === 0) {
+        const excelFiles = files.filter(file =>
+            /\.(xlsx|xls)$/i.test(file)
+        );
 
-            const downloadedFile = excelFiles
-                .map(file => ({
-                    name: file,
-                    fullPath: path.join(downloadDir, file)
-                }))
-                .sort((a, b) => {
-                    return fs.statSync(b.fullPath).mtimeMs -
-                           fs.statSync(a.fullPath).mtimeMs;
-                })[0];
+        for (const file of excelFiles) {
+            const fullPath = path.join(downloadDir, file);
 
-            const stats = await fs.promises.stat(
-                downloadedFile.fullPath
-            );
+            try {
+                const stats = await fs.promises.stat(fullPath);
 
-            expect(stats.size).to.be.greaterThan(0);
+                if (!stats.isFile() || stats.size === 0) continue;
 
-            console.log("Excel file downloaded successfully.");
-            console.log(`File Name: ${downloadedFile.name}`);
-            console.log(`File Size: ${stats.size} bytes`);
+                const previous = existingFiles[file];
 
-            return downloadedFile;
+                // Accept a new file or an existing file that changed.
+                const isNewOrChanged =
+                    !previous ||
+                    stats.size !== previous.size ||
+                    stats.mtimeMs > previous.mtimeMs;
+
+                if (!isNewOrChanged) continue;
+
+                const lastSize = stableFiles.get(file);
+
+                if (lastSize === stats.size && downloadingFiles.length === 0) {
+                    console.log("Excel file downloaded successfully.");
+                    console.log(`File Name: ${file}`);
+                    console.log(`File Size: ${stats.size} bytes`);
+
+                    return {
+                        name: file,
+                        fullPath
+                    };
+                }
+
+                stableFiles.set(file, stats.size);
+            } catch (error) {
+                // File may still be writing; check again.
+            }
         }
 
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     throw new Error(
-        `Excel download failed. No completed Excel file found within ${timeout}ms.`
+        `Excel download failed. No completed or updated Excel file found within ${timeout}ms.`
     );
 }
 
