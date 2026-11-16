@@ -6,7 +6,10 @@
   "scripts": {
     "test": "mocha tests/**/*.test.js --reporter mochawesome",
     "test_login": "mocha tests/login/login.test.js --reporter mochawesome",
-    "test_global_search": "mocha tests/globalSearch/globalSearch.test.js --reporter mochawesome --reporter-options reportDir=reports/global-search,reportFilename=GlobalSearchReport,html=true,json=true,overwrite=true,quiet=true"
+    "test_global_search": "mocha tests/globalSearch/globalSearch.test.js --reporter mochawesome --reporter-options reportDir=reports/global-search,reportFilename=GlobalSearchReport,html=true,json=true,overwrite=true,quiet=true",
+    "test_processor_portal": "mocha tests/all_tests/processorPortalAllTests.test.js --reporter mochawesome --reporter-options reportDir=reports/processor-portal,reportFilename=ProcessorPortalReport,html=true,json=true,overwrite=true",
+    "test_create_new_order": "mocha tests/new/createNewOrder.test.js --reporter mochawesome --reporter-options reportDir=reports/new-order,reportFilename=CreateNewOrderReport,html=true,json=true,overwrite=true",
+    "test_process": "mocha tests/process/process.test.js --reporter mochawesome --reporter-options reportDir=reports/process,reportFilename=ProcessReport,html=true,json=true,overwrite=true"
   },
   "keywords": [],
   "author": "",
