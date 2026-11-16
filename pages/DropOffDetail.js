@@ -2299,6 +2299,9 @@ async completeCourierOrderWithShippingLabels() {
     // Give Angular time to update the form after loading.
     await this.driver.sleep(500);
   }
+
+  
+
 }
 
 module.exports = DropOffDetail;

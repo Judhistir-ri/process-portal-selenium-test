@@ -597,33 +597,54 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     console.log("✓ TC_EXP_115 PASSED");
   });
 
-  // it("TC_EXP_014 - Verify Add Fee is saved in Payment Due", async function () {
-  //   const feeType = "Copy";
+//   it("TC_EXP_014 - Verify Add Fee is saved in Payment Due", async function () {
+//     const feeType = "Copy";
 
-  //   await expectedDetailsPage.clickTab("documentDetails");
+//     await expectedDetailsPage.clickTab("documentDetails");
 
-  //   const feesBefore =
-  //     await expectedDetailsPage.getPaymentDueFeeRows();
+//     const feesBefore =
+//         await expectedDetailsPage.getPaymentDueFeeRows();
 
-  //   await expectedDetailsPage.clickAddFees();
-  //   await expectedDetailsPage.selectFeeType(feeType);
-  //   await expectedDetailsPage.clickSavePrice();
+//     await expectedDetailsPage.clickAddFees();
 
-  //   const feesAfter =
-  //     await expectedDetailsPage.getPaymentDueFeeRows();
+//     // Select Copy.
+//     const selectedFee =
+//         await expectedDetailsPage.selectFeeType(feeType);
 
-  //   console.log("Fees before:", feesBefore);
-  //   console.log("Fees after:", feesAfter);
+//     console.log("Selected fee:", selectedFee);
 
-  //   expect(feesAfter.length).to.be.greaterThan(feesBefore.length);
+//     // Click Save Price.
+//     await expectedDetailsPage.clickSavePrice();
 
-  //   expect(
-  //     feesAfter.some(row =>
-  //       row.toLowerCase().includes(feeType.toLowerCase())
-  //     ),
-  //     `Fee "${feeType}" should appear in Payment Due`
-  //   ).to.equal(true);
-  // });
+//     // Wait until Payment Due contains the new fee.
+//     await driver.wait(
+//         async () => {
+//             const fees = await expectedDetailsPage.getPaymentDueFeeRows();
+
+//             return fees.some(row =>
+//                 /copy\s*\(\s*copy charge\s*\)/i.test(row)
+//             );
+//         },
+//         30000,
+//         "Copy fee was not added to Payment Due."
+//     );
+
+//     const feesAfter =
+//         await expectedDetailsPage.getPaymentDueFeeRows();
+
+//     console.log("Fees before:", feesBefore);
+//     console.log("Fees after:", feesAfter);
+
+//     expect(feesAfter.length).to.be.greaterThan(feesBefore.length);
+
+//     expect(
+//         feesAfter.some(row =>
+//             /copy\s*\(\s*copy charge\s*\)/i.test(row)
+//         )
+//     ).to.equal(true);
+
+//     console.log("✓ TC_EXP_014 PASSED");
+// });
 
   // it("TC_EXP_116 - Verify Add Fee is saved in Payment Due", async function () {
   //   await expectedDetailsPage.clickTab("documentDetails");

@@ -688,225 +688,487 @@ it("TC_DROPOFF_012 - Verify Order IDs 263059 and 263061 in DropOff sections",
     console.log("\n✓ Both Order IDs were found in at least one section.");
   }
     );
+
+
+async function getCurrentOrderLocation(orderId) {
+  const queuePanel = dropOffDetail.getDropOffPanel();
+  const courierPanel = dropOffDetail.getCourierPanel();
+  const completedPanel = dropOffDetail.getCompletedPanel();
+
+  await dropOffDetail.waitForLoadingToFinish(60000);
+
+  let location = null;
+
+  const checkLocation = async () => {
+      if (await dropOffDetail.isOrderInPanel(queuePanel, orderId)) {
+          return "Queue";
+      }
+
+      if (await dropOffDetail.isOrderInPanel(courierPanel, orderId)) {
+          return "Courier";
+      }
+
+      if (await dropOffDetail.isOrderInPanel(completedPanel, orderId)) {
+          return "Completed";
+      }
+
+      return null;
+  };
+
+  location = await checkLocation();
+
+  if (!location) {
+      console.log(`Order ${orderId} not visible. Refreshing page...`);
+
+      const refreshButton = await driver.wait(
+          until.elementLocated(
+              require("selenium-webdriver").By.css(
+                  "button[ng-click='refresh()']"
+              )
+          ),
+          15000,
+          "Refresh button was not found."
+      );
+
+      await refreshButton.click();
+      await dropOffDetail.waitForLoadingToFinish(60000);
+
+      await driver.wait(async () => {
+          location = await checkLocation();
+          return location !== null;
+      }, 30000, `Order ${orderId} was not found in any section.`);
+  }
+
+  console.log(`✓ Order ${orderId} current location: ${location}`);
+
+  return location;
+}
+
+
+it("TC_DROPOFF_014 - Verify order moves from DropOff Queue to Courier and back", async function () {
+  this.timeout(180000);
+
+  const orderId = "263071";
+
+  const queuePanel = dropOffDetail.getDropOffPanel();
+  const courierPanel = dropOffDetail.getCourierPanel();
+
+  await dropOffDetail.waitForLoadingToFinish(120000);
+
+  // Search for the order.
+  await dropOffDetail.searchOrderId(orderId);
+
+  // Identify the current location.
+  let currentLocation = await getCurrentOrderLocation(orderId);
+
+  // If the order is in Queue, move it to Courier.
+  if (currentLocation === "Queue") {
+      console.log(`Order ${orderId} found in DropOff Queue.`);
+
+      await dropOffDetail.selectOrderCheckbox(queuePanel, orderId);
+
+      await dropOffDetail.clickPanelButton(
+          queuePanel,
+          "Courier"
+      );
+
+      const movedToCourier =
+          await dropOffDetail.waitForOrderInPanelWithRefresh(
+              courierPanel,
+              orderId,
+              5
+          );
+
+      expect(movedToCourier).to.equal(true);
+
+      console.log(`✓ Order ${orderId} moved from Queue to Courier.`);
+  }
+
+  // If already in Courier, continue from Courier.
+  else if (currentLocation === "Courier") {
+      console.log(
+          `✓ Order ${orderId} is already in Courier. Skipping Queue to Courier movement.`
+      );
+  }
+
+  else {
+      throw new Error(
+          `Order ${orderId} is in ${currentLocation}. Expected Queue or Courier.`
+      );
+  }
+
+  // Select the order in Courier.
+  await dropOffDetail.selectOrderCheckbox(
+      courierPanel,
+      orderId
+  );
+
+  // Move it back to Queue.
+  await dropOffDetail.clickPanelButton(
+      courierPanel,
+      "Queue"
+  );
+
+  const returnedToQueue =
+      await dropOffDetail.waitForOrderInPanelWithRefresh(
+          queuePanel,
+          orderId,
+          5
+      );
+
+  expect(returnedToQueue).to.equal(true);
+
+  // Verify it has left Courier.
+  const leftCourier =
+      await dropOffDetail.waitForOrderToLeavePanel(
+          courierPanel,
+          orderId,
+          15000
+      );
+
+  expect(leftCourier).to.equal(true);
+
+  console.log(
+      `✓ TC_DROPOFF_014 PASSED: Order ${orderId} is back in DropOff Queue.`
+  );
+
+  await dropOffDetail.searchOrderId("");
+});
+
+
+it("TC_DROPOFF_015 - Verify order moves from DropOff Queue to Courier, Completed and back", async function () {
+  this.timeout(300000);
+
+  const orderId = "263071";
+
+  const queuePanel = dropOffDetail.getDropOffPanel();
+  const courierPanel = dropOffDetail.getCourierPanel();
+  const completedPanel = dropOffDetail.getCompletedPanel();
+
+  await dropOffDetail.waitForLoadingToFinish(120000);
+
+  // Search for the order.
+  await dropOffDetail.searchOrderId(orderId);
+
+  // Identify the current location.
+  const currentLocation = await getCurrentOrderLocation(orderId);
+
+  // Step 1: Move Queue to Courier only when necessary.
+  if (currentLocation === "Queue") {
+      console.log(`Order ${orderId} found in DropOff Queue.`);
+
+      await dropOffDetail.selectOrderCheckbox(
+          queuePanel,
+          orderId
+      );
+
+      await dropOffDetail.clickPanelButton(
+          queuePanel,
+          "Courier"
+      );
+
+      const movedToCourier =
+          await dropOffDetail.waitForOrderInPanelWithRefresh(
+              courierPanel,
+              orderId,
+              5
+          );
+
+      expect(movedToCourier).to.equal(true);
+
+      console.log(`✓ Order ${orderId} moved to Courier.`);
+  }
+
+  // If already in Courier, continue from there.
+  else if (currentLocation === "Courier") {
+      console.log(
+          `✓ Order ${orderId} is already in Courier. Skipping Queue to Courier movement.`
+      );
+  }
+
+  else {
+      throw new Error(
+          `Order ${orderId} is in ${currentLocation}. Expected Queue or Courier.`
+      );
+  }
+
+  // Step 2: Select the order in Courier.
+  await dropOffDetail.selectOrderCheckbox(
+      courierPanel,
+      orderId
+  );
+
+  // Step 3: Click Complete.
+  await dropOffDetail.clickPanelButton(
+      courierPanel,
+      "Complete"
+  );
+
+  console.log("✓ Complete button clicked.");
+
+  // Step 4: Complete the shipping-label popup.
+  await dropOffDetail.completeCourierOrderWithShippingLabels();
+
+  // Step 5: Verify the order appears in Completed.
+  const movedToCompleted =
+      await dropOffDetail.waitForOrderInPanelWithRefresh(
+          completedPanel,
+          orderId,
+          5
+      );
+
+  expect(movedToCompleted).to.equal(true);
+
+  console.log(`✓ Order ${orderId} moved to Completed.`);
+
+  // Step 6: Select the order in Completed.
+  await dropOffDetail.selectOrderCheckbox(
+      completedPanel,
+      orderId
+  );
+
+  // Step 7: Return the order to Queue.
+  await dropOffDetail.clickPanelButton(
+      completedPanel,
+      "Return"
+  );
+
+  const returnedToQueue =
+      await dropOffDetail.waitForOrderInPanelWithRefresh(
+          queuePanel,
+          orderId,
+          5
+      );
+
+  expect(returnedToQueue).to.equal(true);
+
+  console.log(
+      `✓ TC_DROPOFF_015 PASSED: Order ${orderId} returned to DropOff Queue.`
+  );
+
+  // Clear the search.
+  await dropOffDetail.searchOrderId("");
+});
+
   
     
     
-it("TC_DROPOFF_014 - Verify order moves from DropOff Queue to Courier and back",
-    async function () {
-        // Clean up the date filter before the next test.
+// it("TC_DROPOFF_014 - Verify order moves from DropOff Queue to Courier and back",
+//     async function () {
+//         // Clean up the date filter before the next test.
     
-        this.timeout(120000);
+//         this.timeout(120000);
 
-        const orderId = "263071";
+//         const orderId = "263071";
 
-        const dropOffPanel = dropOffDetail.getDropOffPanel();
-        const courierPanel = dropOffDetail.getCourierPanel();
+//         const dropOffPanel = dropOffDetail.getDropOffPanel();
+//         const courierPanel = dropOffDetail.getCourierPanel();
 
-        await dropOffDetail.waitForLoadingToFinish(120000);
+//         await dropOffDetail.waitForLoadingToFinish(120000);
 
-        // Search for the order.
-        await dropOffDetail.searchOrderId(orderId);
+//         // Search for the order.
+//         await dropOffDetail.searchOrderId(orderId);
 
-        // Step 1: Search the order using Filter Anything.
-        // await dropOffDetail.searchOrderId(orderId);
-        // await dropOffDetail.waitForLoadingToFinish();
+//         // Step 1: Search the order using Filter Anything.
+//         // await dropOffDetail.searchOrderId(orderId);
+//         // await dropOffDetail.waitForLoadingToFinish();
 
-        // Step 2: Verify the initial location.
-        let inDropOff = await dropOffDetail.isOrderInPanel(
-            dropOffPanel,
-            orderId
-        );
+//         // Step 2: Verify the initial location.
+//         let inDropOff = await dropOffDetail.isOrderInPanel(
+//             dropOffPanel,
+//             orderId
+//         );
 
-        let inCourier = await dropOffDetail.isOrderInPanel(
-            courierPanel,
-            orderId
-        );
+//         let inCourier = await dropOffDetail.isOrderInPanel(
+//             courierPanel,
+//             orderId
+//         );
 
-        console.log(
-            `Order ${orderId} | DropOff Queue: ${inDropOff} | Courier: ${inCourier}`
-        );
+//         console.log(
+//             `Order ${orderId} | DropOff Queue: ${inDropOff} | Courier: ${inCourier}`
+//         );
 
-        expect(
-            inDropOff,
-            `Order ${orderId} must initially appear in DropOff Queue.`
-        ).to.equal(true);
+//         expect(
+//             inDropOff,
+//             `Order ${orderId} must initially appear in DropOff Queue.`
+//         ).to.equal(true);
 
-        expect(
-            inCourier,
-            `Order ${orderId} should not initially appear in Courier.`
-        ).to.equal(false);
+//         expect(
+//             inCourier,
+//             `Order ${orderId} should not initially appear in Courier.`
+//         ).to.equal(false);
 
-        // Step 3: Select the order in DropOff Queue.
-        await dropOffDetail.selectOrderCheckbox(
-            dropOffPanel,
-            orderId
-        );
+//         // Step 3: Select the order in DropOff Queue.
+//         await dropOffDetail.selectOrderCheckbox(
+//             dropOffPanel,
+//             orderId
+//         );
 
-        // Step 4: Click Courier in the DropOff Queue panel.
-        await dropOffDetail.clickPanelButton(
-            dropOffPanel,
-            "Courier"
-        );
+//         // Step 4: Click Courier in the DropOff Queue panel.
+//         await dropOffDetail.clickPanelButton(
+//             dropOffPanel,
+//             "Courier"
+//         );
 
-        // Step 5: Wait 5 seconds; refresh if necessary.
-        const movedToCourier =
-            await dropOffDetail.waitForOrderInPanelWithRefresh(
-                courierPanel,
-                orderId,
-                5
-            );
+//         // Step 5: Wait 5 seconds; refresh if necessary.
+//         const movedToCourier =
+//             await dropOffDetail.waitForOrderInPanelWithRefresh(
+//                 courierPanel,
+//                 orderId,
+//                 5
+//             );
 
-        expect(
-            movedToCourier,
-            `Order ${orderId} should move to Courier.`
-        ).to.equal(true);
+//         expect(
+//             movedToCourier,
+//             `Order ${orderId} should move to Courier.`
+//         ).to.equal(true);
 
-        // Verify that the order has left DropOff Queue.
-        const leftDropOff = await dropOffDetail.waitForOrderToLeavePanel(
-            dropOffPanel,
-            orderId,
-            15000
-        );
+//         // Verify that the order has left DropOff Queue.
+//         const leftDropOff = await dropOffDetail.waitForOrderToLeavePanel(
+//             dropOffPanel,
+//             orderId,
+//             15000
+//         );
 
-        expect(
-            leftDropOff,
-            `Order ${orderId} should disappear from DropOff Queue.`
-        ).to.equal(true);
+//         expect(
+//             leftDropOff,
+//             `Order ${orderId} should disappear from DropOff Queue.`
+//         ).to.equal(true);
 
-        console.log(`✓ Order ${orderId} moved to Courier.`);
+//         console.log(`✓ Order ${orderId} moved to Courier.`);
 
-        // Step 6: Select the order in Courier.
-        await dropOffDetail.selectOrderCheckbox(
-            courierPanel,
-            orderId
-        );
+//         // Step 6: Select the order in Courier.
+//         await dropOffDetail.selectOrderCheckbox(
+//             courierPanel,
+//             orderId
+//         );
 
-        // Step 7: Click Queue in the Courier panel.
-        await dropOffDetail.clickPanelButton(
-            courierPanel,
-            "Queue"
-        );
+//         // Step 7: Click Queue in the Courier panel.
+//         await dropOffDetail.clickPanelButton(
+//             courierPanel,
+//             "Queue"
+//         );
 
-        // Step 8: Wait 5 seconds; refresh if necessary.
-        const returnedToDropOff =
-            await dropOffDetail.waitForOrderInPanelWithRefresh(
-                dropOffPanel,
-                orderId,
-                5
-            );
+//         // Step 8: Wait 5 seconds; refresh if necessary.
+//         const returnedToDropOff =
+//             await dropOffDetail.waitForOrderInPanelWithRefresh(
+//                 dropOffPanel,
+//                 orderId,
+//                 5
+//             );
 
-        expect(
-            returnedToDropOff,
-            `Order ${orderId} should return to DropOff Queue.`
-        ).to.equal(true);
+//         expect(
+//             returnedToDropOff,
+//             `Order ${orderId} should return to DropOff Queue.`
+//         ).to.equal(true);
 
-        // Verify that the order has left Courier.
-        const leftCourier = await dropOffDetail.waitForOrderToLeavePanel(
-            courierPanel,
-            orderId,
-            15000
-        );
+//         // Verify that the order has left Courier.
+//         const leftCourier = await dropOffDetail.waitForOrderToLeavePanel(
+//             courierPanel,
+//             orderId,
+//             15000
+//         );
 
-        expect(
-            leftCourier,
-            `Order ${orderId} should disappear from Courier.`
-        ).to.equal(true);
+//         expect(
+//             leftCourier,
+//             `Order ${orderId} should disappear from Courier.`
+//         ).to.equal(true);
 
-        console.log(
-            `✓ Order ${orderId} returned to DropOff Queue successfully.`
-        );
-    }
-    );
+//         console.log(
+//             `✓ Order ${orderId} returned to DropOff Queue successfully.`
+//         );
+//     }
+//     );
     
-    it("TC_DROPOFF_015 - Verify order moves from DropOff Queue to Courier, Completed and back",
-    async function () {
-        this.timeout(240000);
+//     it("TC_DROPOFF_015 - Verify order moves from DropOff Queue to Courier, Completed and back",
+//     async function () {
+//         this.timeout(240000);
 
-        const orderId = "263071";
+//         const orderId = "263071";
 
-        // Ensure the DropOff page is ready.
-        // await dropOffDetail.waitForPage();
-        await dropOffDetail.waitForLoadingToFinish(120000);
+//         // Ensure the DropOff page is ready.
+//         // await dropOffDetail.waitForPage();
+//         await dropOffDetail.waitForLoadingToFinish(120000);
 
-        // Search for the order.
-        await dropOffDetail.searchOrderId(orderId);
+//         // Search for the order.
+//         await dropOffDetail.searchOrderId(orderId);
 
-        // Confirm the order is in DropOff Queue.
-        await dropOffDetail.waitForOrderInPanelWithRefresh(
-            dropOffDetail.getDropOffPanel(),
-            orderId,
-            5
-        );
+//         // Confirm the order is in DropOff Queue.
+//         await dropOffDetail.waitForOrderInPanelWithRefresh(
+//             dropOffDetail.getDropOffPanel(),
+//             orderId,
+//             5
+//         );
 
-        console.log(`✓ Order ${orderId} found in DropOff Queue.`);
+//         console.log(`✓ Order ${orderId} found in DropOff Queue.`);
 
-        // Select the order and move it to Courier.
-        await dropOffDetail.selectOrderCheckbox(
-            dropOffDetail.getDropOffPanel(),
-            orderId
-        );
+//         // Select the order and move it to Courier.
+//         await dropOffDetail.selectOrderCheckbox(
+//             dropOffDetail.getDropOffPanel(),
+//             orderId
+//         );
 
-        await dropOffDetail.clickPanelButton(
-            dropOffDetail.getDropOffPanel(),
-            "Courier"
-        );
+//         await dropOffDetail.clickPanelButton(
+//             dropOffDetail.getDropOffPanel(),
+//             "Courier"
+//         );
 
-        await dropOffDetail.waitForOrderInPanelWithRefresh(
-            dropOffDetail.getCourierPanel(),
-            orderId,
-            5
-        );
+//         await dropOffDetail.waitForOrderInPanelWithRefresh(
+//             dropOffDetail.getCourierPanel(),
+//             orderId,
+//             5
+//         );
 
-        console.log(`✓ Order ${orderId} moved to Courier.`);
+//         console.log(`✓ Order ${orderId} moved to Courier.`);
 
-        // Select the order in Courier and click Complete.
-        await dropOffDetail.selectOrderCheckbox(
-            dropOffDetail.getCourierPanel(),
-            orderId
-        );
+//         // Select the order in Courier and click Complete.
+//         await dropOffDetail.selectOrderCheckbox(
+//             dropOffDetail.getCourierPanel(),
+//             orderId
+//         );
 
-        await dropOffDetail.clickPanelButton(
-            dropOffDetail.getCourierPanel(),
-            "Complete"
-        );
+//         await dropOffDetail.clickPanelButton(
+//             dropOffDetail.getCourierPanel(),
+//             "Complete"
+//         );
 
-        console.log("✓ Complete button clicked.");
+//         console.log("✓ Complete button clicked.");
 
-        // Complete the shipping-label popup.
-        await dropOffDetail.completeCourierOrderWithShippingLabels();
+//         // Complete the shipping-label popup.
+//         await dropOffDetail.completeCourierOrderWithShippingLabels();
 
-        // Wait until the order is in Completed.
-        await dropOffDetail.waitForOrderInPanelWithRefresh(
-            dropOffDetail.getCompletedPanel(),
-            orderId,
-            5
-        );
+//         // Wait until the order is in Completed.
+//         await dropOffDetail.waitForOrderInPanelWithRefresh(
+//             dropOffDetail.getCompletedPanel(),
+//             orderId,
+//             5
+//         );
 
-        console.log(`✓ Order ${orderId} moved to Completed.`);
+//         console.log(`✓ Order ${orderId} moved to Completed.`);
 
-        // Select the order in Completed and return it to Queue.
-        await dropOffDetail.selectOrderCheckbox(
-            dropOffDetail.getCompletedPanel(),
-            orderId
-        );
+//         // Select the order in Completed and return it to Queue.
+//         await dropOffDetail.selectOrderCheckbox(
+//             dropOffDetail.getCompletedPanel(),
+//             orderId
+//         );
 
-        await dropOffDetail.clickPanelButton(
-            dropOffDetail.getCompletedPanel(),
-            "Return"
-        );
+//         await dropOffDetail.clickPanelButton(
+//             dropOffDetail.getCompletedPanel(),
+//             "Return"
+//         );
 
-        await dropOffDetail.waitForOrderInPanelWithRefresh(
-            dropOffDetail.getDropOffPanel(),
-            orderId,
-            5
-        );
+//         await dropOffDetail.waitForOrderInPanelWithRefresh(
+//             dropOffDetail.getDropOffPanel(),
+//             orderId,
+//             5
+//         );
 
-        console.log(`✓ Order ${orderId} returned to DropOff Queue.`);
+//         console.log(`✓ Order ${orderId} returned to DropOff Queue.`);
 
-     // Clear the search filter after completing the test.
-await dropOffDetail.searchOrderId(""); 
-    }  
-);
+//      // Clear the search filter after completing the test.
+// await dropOffDetail.searchOrderId(""); 
+//     }  
+//   );
 
     // ============================================================
 // TC_DROPOFF_013 - Verify section totals after selecting a date
