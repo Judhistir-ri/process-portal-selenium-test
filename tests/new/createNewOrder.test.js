@@ -1,9 +1,12 @@
+
 const { expect } = require("chai");
 
 const getDriver = require("../../utils/driver");
 
 const LoginPage = require("../../pages/Login");
 const NewPage = require("../../pages/NewPage");
+
+const TestReporter = require("../../utils/testReporter");
 
 require("dotenv").config();
 
@@ -13,6 +16,27 @@ describe("Processor Portal - Create New Order", function () {
   let driver;
   let loginPage;
   let newPage;
+
+  let activeReporter = null;
+  let reportStepNumber = 0;
+
+  // =========================================================
+  // REPORTING HELPER
+  // =========================================================
+
+  function addReportStep(stepName, expectedResult, actualResult, status = "PASS") {
+    if (!activeReporter) return;
+
+    reportStepNumber++;
+
+    activeReporter.addStep(
+      reportStepNumber,
+      stepName,
+      expectedResult,
+      actualResult,
+      status
+    );
+  }
 
   // =========================================================
   // SETUP
@@ -26,10 +50,6 @@ describe("Processor Portal - Create New Order", function () {
     console.log("STARTING CREATE NEW ORDER TEST");
     console.log("==============================================");
 
-    // -----------------------------------------------------
-    // Check environment variables
-    // -----------------------------------------------------
-
     if (!process.env.EMAIL) {
       throw new Error("EMAIL is missing from .env file");
     }
@@ -41,41 +61,45 @@ describe("Processor Portal - Create New Order", function () {
     console.log("EMAIL: configured");
     console.log("PASSWORD: configured");
 
-    // -----------------------------------------------------
-    // Start browser using existing project driver
-    // -----------------------------------------------------
-
     driver = await getDriver();
 
     loginPage = new LoginPage(driver);
     newPage = new NewPage(driver);
 
+    // Automatically capture page-object actions
+    TestReporter.instrumentPageObject(loginPage, () => activeReporter);
+    TestReporter.instrumentPageObject(newPage, () => activeReporter);
+
     console.log("Browser started.");
-
-    // =====================================================
-    // LOGIN
-    // =====================================================
-
-    await loginPage.open();
-
-    console.log("Login page opened.");
-
-    await loginPage.login(process.env.EMAIL, process.env.PASSWORD);
-
-    console.log("Login completed.");
-
-    // =====================================================
-    // WAIT FOR NEW PAGE
-    // =====================================================
-
-    await newPage.waitForPage();
-    // await newPage.waitForNewOrderPageToFullyLoad(driver);
-
-    console.log("New page loaded.");
+    console.log("Page objects initialized.");
 
     console.log("==============================================");
     console.log("SETUP COMPLETED");
     console.log("==============================================");
+  });
+
+  // =========================================================
+  // REPORT INITIALIZATION
+  // =========================================================
+
+  beforeEach(function () {
+    activeReporter = new TestReporter(driver, this);
+
+    reportStepNumber = 0;
+
+    const title = this.currentTest?.title || "Unnamed test";
+
+    const testCaseId =
+      (title.match(/\bTC_[A-Z0-9_]+\b/i) || [])[0] || "Not specified";
+
+    activeReporter.addTestInfo({
+      testCaseId,
+      testCase: title,
+      module: "Processor Portal - Create New Order",
+      objective: title.replace(/^TC_[A-Z0-9_]+\s*-\s*/i, ""),
+      reportingNote:
+        "Steps are captured from actual page-object actions and explicit test assertions."
+    });
   });
 
   // =========================================================
@@ -90,120 +114,195 @@ describe("Processor Portal - Create New Order", function () {
     console.log("TC_01 - CREATE NEW ORDER");
     console.log("==============================================");
 
-    // =================================================
-    // STEP 1 - VERIFY NEW PAGE
-    // =================================================
+    // =====================================================
+    // STEP 1 - LOGIN
+    // =====================================================
+
+    console.log("STEP 1 - Login");
+
+    await loginPage.open();
+
+    await loginPage.login(
+      process.env.EMAIL,
+      process.env.PASSWORD
+    );
+
+    addReportStep(
+      "Login to Processor Portal",
+      "User should log in successfully with valid credentials.",
+      "Login page opened and login method executed successfully."
+    );
+
+    console.log("STEP 1 PASSED - Login completed");
+
+    // =====================================================
+    // STEP 2 - WAIT FOR NEW PAGE
+    // =====================================================
+
+    console.log("STEP 2 - Wait for New Order page");
+
+    await newPage.waitForPage();
 
     const currentUrl = await driver.getCurrentUrl();
 
-    console.log("Current URL:", currentUrl);
-
     expect(currentUrl).to.include("/p/new");
 
-    console.log("STEP 1 PASSED - New page opened");
+    addReportStep(
+      "Verify New Order page",
+      "New Order page should load and URL should contain /p/new.",
+      `New Order page loaded. Current URL: ${currentUrl}`
+    );
 
-    // =================================================
-    // STEP 2 - SELECT CUSTOMER
-    // =================================================
+    console.log("STEP 2 PASSED - New page opened");
 
-    console.log("STEP 2 - Selecting Customer: Redintegro2");
+    // =====================================================
+    // STEP 3 - SELECT CUSTOMER
+    // =====================================================
+
+    console.log("STEP 3 - Selecting Customer: Redintegro2");
 
     await newPage.selectCustomer("Redintegro2");
 
-    console.log("STEP 2 PASSED - Customer selected");
+    addReportStep(
+      "Select Customer",
+      "Customer should be selected as Redintegro2.",
+      "Customer selection method executed for Redintegro2."
+    );
 
-    // =================================================
-    // STEP 3 - SELECT CONTACT
-    // =================================================
+    console.log("STEP 3 PASSED - Customer selected");
 
-    console.log("STEP 3 - Selecting Contact: ranajit Sahoo");
+    // =====================================================
+    // STEP 4 - SELECT CONTACT
+    // =====================================================
+
+    console.log("STEP 4 - Selecting Contact: ranajit Sahoo");
 
     await newPage.selectContact("ranajit Sahoo");
 
-    console.log("STEP 3 PASSED - Contact selected");
+    addReportStep(
+      "Select Contact",
+      "Contact should be selected as ranajit Sahoo.",
+      "Contact selection method executed for ranajit Sahoo."
+    );
 
-    // =================================================
-    // STEP 4 - VERIFY ORIGIN
-    // =================================================
+    console.log("STEP 4 PASSED - Contact selected");
 
-    console.log("STEP 4 - Verifying Origin: United States");
+    // =====================================================
+    // STEP 5 - VERIFY ORIGIN
+    // =====================================================
+
+    console.log("STEP 5 - Verifying Origin: United States");
 
     const origin = await newPage.getOriginValue();
 
     expect(origin.toLowerCase()).to.include("united");
 
-    console.log("STEP 4 PASSED - Origin:", origin);
+    addReportStep(
+      "Verify Origin",
+      "Origin should display United States.",
+      `Actual Origin value: ${origin}`
+    );
 
-    // =================================================
-    // STEP 5 - SELECT DESTINATION
-    // =================================================
+    console.log("STEP 5 PASSED - Origin:", origin);
 
-    console.log("STEP 5 - Selecting Destination: Afghanistan");
+    // =====================================================
+    // STEP 6 - SELECT DESTINATION
+    // =====================================================
+
+    console.log("STEP 6 - Selecting Destination: Afghanistan");
 
     await newPage.selectDestination("Afghanistan");
 
-    console.log("STEP 5 PASSED - Destination selected");
+    addReportStep(
+      "Select Destination",
+      "Destination should be selected as Afghanistan.",
+      "Destination selection method executed for Afghanistan."
+    );
 
-    // =================================================
-    // STEP 6 - SELECT CATEGORY
-    // =================================================
+    console.log("STEP 6 PASSED - Destination selected");
 
-    console.log("STEP 6 - Selecting Category: Federal Government");
+    // =====================================================
+    // STEP 7 - SELECT CATEGORY
+    // =====================================================
+
+    console.log("STEP 7 - Selecting Category: Federal Government");
 
     await newPage.selectCategory("Federal Government");
 
-    // Wait for dynamic fee calculation
     await newPage.waitForLoadingToFinish();
 
-    console.log("STEP 6 PASSED - Category selected");
+    addReportStep(
+      "Select Category",
+      "Category should be selected as Federal Government.",
+      "Federal Government category selected and loading completed."
+    );
 
-    // =================================================
-    // STEP 7 - SELECT ORIGIN STATE
-    // =================================================
+    console.log("STEP 7 PASSED - Category selected");
 
-    console.log("STEP 7 - Selecting Origin State: Maryland");
+    // =====================================================
+    // STEP 8 - SELECT ORIGIN STATE
+    // =====================================================
+
+    console.log("STEP 8 - Selecting Origin State: Maryland");
 
     await newPage.selectOriginState("Maryland");
 
-    // Dynamic fee calculation
     await newPage.waitForLoadingToFinish();
 
-    console.log("STEP 7 PASSED - Origin State selected");
+    addReportStep(
+      "Select Origin State",
+      "Origin State should be selected as Maryland.",
+      "Maryland selected and dynamic loading completed."
+    );
 
-    // =================================================
-    // STEP 8 - SELECT DOCUMENT TYPE
-    // =================================================
+    console.log("STEP 8 PASSED - Origin State selected");
 
-    console.log("STEP 8 - Selecting Document Type: Federal Government (other)");
+    // =====================================================
+    // STEP 9 - SELECT DOCUMENT TYPE
+    // =====================================================
+
+    console.log("STEP 9 - Selecting Document Type");
 
     await newPage.selectDocumentType("Federal Government (Others)");
 
-    // Dynamic fee calculation
     await newPage.waitForLoadingToFinish();
 
-    console.log("STEP 8 PASSED - Document Type selected");
+    addReportStep(
+      "Select Document Type",
+      "Document Type should be Federal Government (Others).",
+      "Document Type selection method executed and loading completed."
+    );
 
-    // =================================================
-    // STEP 9 - SELECT RUSH
-    // =================================================
+    console.log("STEP 9 PASSED - Document Type selected");
 
-    console.log("STEP 9 - Selecting RUSH");
+    // =====================================================
+    // STEP 10 - SELECT ADDITIONAL SERVICES
+    // =====================================================
 
-    // await newPage.selectAdditionalService( "RUSH" );
+    console.log("STEP 10 - Selecting Additional Services");
+
     await newPage.selectAdditionalServices(driver);
 
-    console.log("STEP 9 PASSED - RUSH, PRESCAN and POSTSCAN selected");
-
     await newPage.waitForLoadingToFinish();
+
     await driver.sleep(2000);
 
-    // =================================================
-    // STEP 12 - ENTER NUMBER OF PAGES
-    // =================================================
+    addReportStep(
+      "Select Additional Services",
+      "RUSH, PRESCAN and POSTSCAN services should be selected.",
+      "Additional services selection method executed."
+    );
 
-    console.log("STEP 12 - Entering Random Number of Pages");
+    console.log("STEP 10 PASSED - Additional services selected");
 
-    const pageResult = await newPage.enterRandomPagesAndVerifyCopyCharge();
+    // =====================================================
+    // STEP 11 - ENTER NUMBER OF PAGES
+    // =====================================================
+
+    console.log("STEP 11 - Entering Random Number of Pages");
+
+    const pageResult =
+      await newPage.enterRandomPagesAndVerifyCopyCharge();
 
     const selectedPages = pageResult.pages;
     const expectedCopyCharge = pageResult.expectedCopyCharge;
@@ -213,105 +312,209 @@ describe("Processor Portal - Create New Order", function () {
 
     await newPage.waitForLoadingToFinish();
 
-    // =================================================
-    // STEP 13 - VERIFY COPY CHARGE
-    // =================================================
+    addReportStep(
+      "Enter Number of Pages",
+      "Random page count should be entered and copy charge should be calculated correctly.",
+      `Selected pages: ${selectedPages}. Expected copy charge: $${expectedCopyCharge.toFixed(2)}.`
+    );
 
-    console.log("------------------------------------------");
-    console.log("STEP 13 - Verifying COPY CHARGE");
-    console.log("------------------------------------------");
+    console.log("STEP 11 PASSED - Page count entered");
+
+    // =====================================================
+    // STEP 12 - VERIFY COPY CHARGE
+    // =====================================================
+
+    console.log("STEP 12 - Verifying COPY CHARGE");
 
     if (selectedPages <= 10) {
-      console.log(`✓ Pages ${selectedPages} <= 10`);
+      console.log(`Pages ${selectedPages} <= 10`);
+      console.log("COPY CHARGE should not be displayed");
 
-      console.log("✓ COPY CHARGE correctly NOT displayed");
+      addReportStep(
+        "Verify Copy Charge",
+        "Copy charge should not be displayed when page count is 10 or less.",
+        `Selected pages: ${selectedPages}. Expected copy charge: $${expectedCopyCharge.toFixed(2)}.`
+      );
     } else {
-      console.log(`✓ Pages ${selectedPages} > 10`);
-
+      console.log(`Pages ${selectedPages} > 10`);
       console.log(
-        `✓ COPY CHARGE should be displayed: $${expectedCopyCharge.toFixed(2)}`,
+        `COPY CHARGE should be displayed: $${expectedCopyCharge.toFixed(2)}`
+      );
+
+      addReportStep(
+        "Verify Copy Charge",
+        "Copy charge should be displayed when page count is greater than 10.",
+        `Selected pages: ${selectedPages}. Expected copy charge: $${expectedCopyCharge.toFixed(2)}.`
       );
     }
 
-    console.log("STEP 13 PASSED - COPY CHARGE logic verified");
+    console.log("STEP 12 PASSED - COPY CHARGE logic verified");
 
-    // =================================================
-    // STEP 14 - ENTER DESCRIPTION
-    // =================================================
+    // =====================================================
+    // STEP 13 - ENTER DESCRIPTION
+    // =====================================================
 
-    console.log("STEP 14 - Entering Description");
+    console.log("STEP 13 - Entering Description");
 
-    await newPage.enterDescription("Selenium automation test order");
+    await newPage.enterDescription(
+      "Selenium automation test order"
+    );
 
-    console.log("STEP 14 PASSED - Description entered");
+    addReportStep(
+      "Enter Description",
+      "Description should be entered successfully.",
+      "Description entered: Selenium automation test order."
+    );
 
-    // =================================================
-    // STEP 15 - ENTER NOTES
-    // =================================================
+    console.log("STEP 13 PASSED - Description entered");
 
-    console.log("STEP 15 - Entering Notes");
+    // =====================================================
+    // STEP 14 - ENTER NOTES
+    // =====================================================
 
-    await newPage.enterNotes("Created through Selenium automation");
+    console.log("STEP 14 - Entering Notes");
 
-    console.log("STEP 15 PASSED - Notes entered");
+    await newPage.enterNotes(
+      "Created through Selenium automation"
+    );
 
-    // =================================================
-    // STEP 16 - VERIFY PROCESSING STEPS
-    // =================================================
+    addReportStep(
+      "Enter Notes",
+      "Notes should be entered successfully.",
+      "Notes entered: Created through Selenium automation."
+    );
 
-    console.log("STEP 16 - Verifying Processing Steps");
+    console.log("STEP 14 PASSED - Notes entered");
+
+    // =====================================================
+    // STEP 15 - VERIFY PROCESSING STEPS
+    // =====================================================
+
+    console.log("STEP 15 - Verifying Processing Steps");
 
     await newPage.verifyProcessingSection();
 
-    console.log("STEP 16 PASSED - Processing steps verified");
+    addReportStep(
+      "Verify Processing Steps",
+      "Processing Steps section should display the expected processing steps.",
+      "verifyProcessingSection() completed without throwing an error."
+    );
 
-    // =================================================
-    // STEP 17 - ADD STOP
-    // =================================================
+    console.log("STEP 15 PASSED - Processing steps verified");
 
-    console.log("STEP 17 - Stop selection");
+    // =====================================================
+    // STEP 16 - ADD STOP
+    // =====================================================
 
-    /*
-            IMPORTANT:
+    console.log("STEP 16 - Stop selection");
 
-            Put an actual stop name from your dropdown here.
+    // Add an actual stop name from the dropdown when specified.
+    // Example:
+    // await newPage.addStop("Actual Stop Name");
 
-            Example:
+    addReportStep(
+      "Stop Selection",
+      "A stop should be selected when a stop value is provided.",
+      "Skipped because no stop value was specified.",
+      "SKIP"
+    );
 
-            await newPage.addStop("Some Stop Name");
+    console.log("STEP 16 SKIPPED - Stop value not specified");
 
-            */
+    // =====================================================
+    // STEP 17 - SAVE ORDER
+    // =====================================================
 
-    console.log("STEP 17 SKIPPED - Stop value not specified");
+    console.log("STEP 17 - Saving Order");
 
-    // =================================================
-    // STEP 18 - SAVE ORDER
-    // =================================================
+    await newPage.clickSave();
 
-    console.log("STEP 18 - Saving Order");
+    addReportStep(
+      "Save New Order",
+      "Order should be saved successfully.",
+      "Save button action executed."
+    );
 
-await newPage.clickSave();
+    console.log("STEP 17 PASSED - Order saved");
 
-console.log("STEP 18 PASSED - Order saved");
+    // =====================================================
+    // STEP 18 - VERIFY DOCUMENT LIST
+    // =====================================================
 
-    // =================================================
-    // STEP 19 - VERIFY DOCUMENT LIST
-    // =================================================
-
-    console.log("STEP 19 - Verifying Document List");
+    console.log("STEP 18 - Verifying Document List");
 
     await newPage.verifyDocumentList();
 
-    console.log("STEP 19 PASSED - Document List displayed");
+    addReportStep(
+      "Verify Document List",
+      "Document List should be displayed after saving the order.",
+      "verifyDocumentList() completed without throwing an error."
+    );
 
-    // =================================================
+    console.log("STEP 18 PASSED - Document List displayed");
+
+    // =====================================================
     // FINAL
-    // =================================================
+    // =====================================================
 
     console.log("");
     console.log("==============================================");
     console.log("CREATE NEW ORDER TEST PASSED");
     console.log("==============================================");
+  });
+
+  // =========================================================
+  // AFTER EACH - FINAL REPORT DETAILS
+  // =========================================================
+
+  afterEach(async function () {
+    if (!activeReporter) return;
+
+    const currentTest = this.currentTest;
+
+    try {
+      const currentUrl = driver
+        ? await driver.getCurrentUrl()
+        : "Browser unavailable";
+
+      const duration = currentTest?.duration || 0;
+
+      activeReporter.addDetail(
+        "FINAL TEST STATUS",
+        currentTest?.state === "passed" ? "PASSED" : "FAILED"
+      );
+
+      activeReporter.addDetail(
+        "EXECUTION DURATION",
+        `${(duration / 1000).toFixed(2)} seconds`
+      );
+
+      activeReporter.addDetail(
+        "FINAL BROWSER URL",
+        currentUrl
+      );
+
+      if (currentTest?.state === "passed") {
+        activeReporter.addDetail(
+          "FINAL ACTUAL RESULT",
+          "New Order creation flow completed successfully."
+        );
+      } else {
+        activeReporter.addFailure(
+          currentTest?.err || new Error("Test failed")
+        );
+      }
+
+      await activeReporter.attachScreenshot(
+        `${currentTest?.title || "Create New Order"} - ${
+          currentTest?.state || "completed"
+        }`
+      );
+    } catch (error) {
+      console.error("Report finalization error:", error.message);
+    } finally {
+      activeReporter = null;
+    }
   });
 
   // =========================================================
@@ -322,7 +525,11 @@ console.log("STEP 18 PASSED - Order saved");
     if (driver) {
       console.log("Closing browser...");
 
-      await driver.quit();
+      try {
+        await driver.quit();
+      } catch (error) {
+        console.error("Browser close error:", error.message);
+      }
     }
   });
 });

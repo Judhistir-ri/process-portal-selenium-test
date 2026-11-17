@@ -1,5 +1,5 @@
-const { expect } = require("chai");
 
+const { expect } = require("chai");
 const getDriver = require("../../utils/driver");
 
 const LoginPage = require("../../pages/Login");
@@ -9,258 +9,589 @@ const DropOffPage = require("../../pages/DropOffPage");
 const PickupPage = require("../../pages/PickupPage");
 const ShipToCustomerPage = require("../../pages/ShipToCustomerPage");
 
-require("dotenv").config();
+const TestReporter = require("../../utils/testReporter");
+
+require("dotenv").config({ override: true });
 
 describe("Processor Portal - Complete Order Processing Flow", function () {
-  this.timeout(2400000);
-
-  let driver;
-
-  let loginPage;
-  let newPage;
-  let expectedPage;
-  let dropOffPage;
-  let pickupPage;
-  let shipToCustomerPage;
-
-  before(async function () {
-    this.timeout(300000);
-
-    driver = await getDriver();
-
-    loginPage = new LoginPage(driver);
-    newPage = new NewPage(driver);
-    expectedPage = new ExpectedPage(driver);
-    dropOffPage = new DropOffPage(driver);
-    pickupPage = new PickupPage(driver);
-    shipToCustomerPage = new ShipToCustomerPage(driver);
-  });
-
-  it("TC_PROCESS_FULL_001 - Complete order processing from Login to Ship To Customer", async function () {
     this.timeout(2400000);
 
-    // =====================================================
-    // LOGIN
-    // =====================================================
+    let driver;
 
-    await loginPage.open();
+    let loginPage;
+    let newPage;
+    let expectedPage;
+    let dropOffPage;
+    let pickupPage;
+    let shipToCustomerPage;
 
-    await loginPage.login(process.env.EMAIL, process.env.PASSWORD);
-
-    // =====================================================
-    // NEW
-    // =====================================================
-
-    await newPage.waitForPage();
+    let activeReporter = null;
+    let reportStepNumber = 0;
 
     // =====================================================
-    // EXPECTED
+    // SETUP
     // =====================================================
 
-    await expectedPage.open();
+    before(async function () {
+        this.timeout(300000);
 
-    const orderId = await expectedPage.getTopOrderId();
+        driver = await getDriver();
 
-    expect(orderId).to.match(/^\d+$/);
+        loginPage = new LoginPage(driver);
+        newPage = new NewPage(driver);
+        expectedPage = new ExpectedPage(driver);
+        dropOffPage = new DropOffPage(driver);
+        pickupPage = new PickupPage(driver);
+        shipToCustomerPage = new ShipToCustomerPage(driver);
 
-    await expectedPage.clickOrderId(orderId);
+        // Automatically capture page-object actions in the report.
+        TestReporter.instrumentPageObject(
+            loginPage,
+            () => activeReporter
+        );
 
-    await expectedPage.waitForOrderDetails();
+        TestReporter.instrumentPageObject(
+            newPage,
+            () => activeReporter
+        );
 
-    const docId = await expectedPage.getDocId();
+        TestReporter.instrumentPageObject(
+            expectedPage,
+            () => activeReporter
+        );
 
-    expect(docId).to.match(/^\d+$/);
+        TestReporter.instrumentPageObject(
+            dropOffPage,
+            () => activeReporter
+        );
 
-    const country = process.env.PROCESS_COUNTRY || "Afghanistan";
+        TestReporter.instrumentPageObject(
+            pickupPage,
+            () => activeReporter
+        );
 
-    await expectedPage.verifyOrderDetails({
-      orderId,
-      docId,
-      country,
+        TestReporter.instrumentPageObject(
+            shipToCustomerPage,
+            () => activeReporter
+        );
+
+        console.log("WebDriver and Page Objects initialized.");
     });
 
     // =====================================================
-    // GET PROCESSING STEPS DYNAMICALLY
+    // PER-TEST REPORT INITIALIZATION
     // =====================================================
 
-    const processingSteps = await expectedPage.getProcessingStepsFromOrder();
+    beforeEach(function () {
+        reportStepNumber = 0;
 
-    expect(processingSteps.length).to.be.greaterThan(0);
+        activeReporter = new TestReporter(driver, this);
 
-    console.log("");
-    console.log(`Order ID: ${orderId}`);
+        const title = this.currentTest?.title || "Unnamed test";
 
-    console.log(`Doc ID: ${docId}`);
+        const testCaseId =
+            (title.match(/TC_[A-Z]+_?\d+/i) || [])[0] ||
+            "Not specified";
 
-    console.log(`Country: ${country}`);
-
-    console.log(`Processing Step Count: ${processingSteps.length}`);
-
-    console.log(`Processing Steps: ${processingSteps.join(", ")}`);
+        activeReporter.addTestInfo({
+            testCaseId,
+            testCase: title,
+            module: "Processor Portal - Complete Order Processing",
+            feature: "Complete order processing from Login to Ship To Customer",
+            objective: title.replace(
+                /^TC_[A-Z]+_?\d+\s*-\s*/i,
+                ""
+            ),
+            testData: "Order and document IDs are selected dynamically from the Expected page.",
+            reportingNote:
+                "Page-object actions are automatically instrumented. Workflow milestones, dynamic processing steps, assertions, screenshots and failures are recorded."
+        });
+    });
 
     // =====================================================
-    // SAVE & PROCESS
+    // REPORT STEP HELPER
     // =====================================================
 
-    await expectedPage.clickSaveAndProcess();
+    function addReportStep(title, expected, actual, status = "PASS") {
+        reportStepNumber++;
 
-    // =====================================================
-    // PROCESS EVERY STEP
-    // =====================================================
+        if (activeReporter) {
+            activeReporter.addStep(
+                reportStepNumber,
+                title,
+                expected,
+                actual,
+                status
+            );
+        }
 
-    for (let i = 0; i < processingSteps.length; i++) {
-      const currentStep = processingSteps[i];
-
-      console.log("");
-      console.log(
-        `Processing Step ${i + 1}/${processingSteps.length}: ${currentStep}`,
-      );
-
-      // =================================================
-      // DROP OFF
-      // =================================================
-
-      await dropOffPage.open();
-
-      await dropOffPage.searchOrder(orderId);
-
-      // Verify Order ID
-      await dropOffPage.verifyOrderId(orderId);
-
-      // Verify Stop exists
-      const dropOffStop = await dropOffPage.verifyStop(orderId);
-
-      console.log(`Drop Off Stop: ${dropOffStop}`);
-
-      // =================================================
-      // CHECKBOX
-      // =================================================
-
-      await dropOffPage.selectOrder(orderId);
-
-      // =================================================
-      // COURIER
-      // =================================================
-
-      await dropOffPage.clickCourier();
-
-      await dropOffPage.waitForCourierCheckbox(orderId);
-
-      // await dropOffPage.verifyOrderInCourier(
-      //     orderId
-      // );
-
-      // =================================================
-      // COMPLETE
-      // =================================================
-
-
-      await dropOffPage.processCourier(orderId, docId);
-
-      // =================================================
-      // PICKUP
-      // =================================================
-
-      await pickupPage.open();
-
-      await pickupPage.searchOrder(orderId);
-
-      // Verify Order ID
-      await pickupPage.verifyOrderId(orderId);
-
-      // Verify Stop
-      const pickupStop = await pickupPage.verifyStop(orderId);
-
-      console.log(`Pickup Stop: ${pickupStop}`);
-
-      // Checkbox
-      await pickupPage.selectOrder(orderId);
-
-      // Complete
-      await pickupPage.clickComplete();
-
-      // Change Date -> Save
-      await pickupPage.saveChangeDate();
-
-      // =================================================
-      // PICKUP COMPLETED
-      // =================================================
-
-      // await pickupPage.clickCompletedDocId(
-      //     orderId
-      // );
-
-      // =================================================
-      // VERIFY CURRENT STEP GREEN
-      // =================================================
-
-      // await pickupPage.verifyCompletedStep(
-      //     currentStep
-      // );
-
-      console.log(`${currentStep} completed successfully.`);
-
-      // =================================================
-      // CONTINUE TO NEXT STEP
-      // =================================================
+        console.log(
+            `REPORT STEP ${reportStepNumber}: ${title} - ${status}`
+        );
     }
 
     // =====================================================
-    // ALL PROCESSING STEPS COMPLETED
+    // AUTOMATIC REPORT DETAILS, FAILURE AND SCREENSHOT
     // =====================================================
 
-    console.log("");
-    console.log("All processing steps completed.");
+    afterEach(async function () {
+        const currentTest = this.currentTest;
+
+        if (currentTest && activeReporter) {
+            try {
+                const pageUrl = driver
+                    ? await driver.getCurrentUrl().catch(
+                        () => "URL unavailable"
+                    )
+                    : "Browser unavailable";
+
+                activeReporter.addDetail(
+                    "FINAL TEST STATUS",
+                    String(currentTest.state || "unknown").toUpperCase()
+                );
+
+                activeReporter.addDetail(
+                    "EXECUTION DURATION",
+                    `${currentTest.duration || 0} ms`
+                );
+
+                activeReporter.addDetail(
+                    "FINAL BROWSER URL",
+                    pageUrl
+                );
+
+                if (currentTest.state === "passed") {
+                    activeReporter.addDetail(
+                        "FINAL ACTUAL RESULT",
+                        "All assertions and order-processing workflow steps completed successfully."
+                    );
+                }
+
+                if (currentTest.state === "failed" && currentTest.err) {
+                    activeReporter.addFailure(currentTest.err);
+                }
+
+                // Capture screenshot before closing the browser.
+                await activeReporter.attachScreenshot(
+                    `${currentTest.title} - ${currentTest.state || "completed"}`
+                );
+
+            } catch (reportError) {
+                console.error(
+                    "Could not attach report details:",
+                    reportError.message
+                );
+            }
+        }
+
+        activeReporter = null;
+    });
 
     // =====================================================
-    // SHIP TO CUSTOMER
+    // MAIN TEST
     // =====================================================
 
-    await shipToCustomerPage.open();
+    it(
+        "TC_PROCESS_FULL_001 - Complete order processing from Login to Ship To Customer",
+        async function () {
 
-    await shipToCustomerPage.searchOrder(orderId);
+            this.timeout(2400000);
 
-    await shipToCustomerPage.verifyReadyToShip(orderId);
+            // =================================================
+            // STEP 1: LOGIN
+            // =================================================
 
-    // Checkbox
-    await shipToCustomerPage.selectOrder(orderId);
+            await loginPage.open();
 
-    // Complete
-    await shipToCustomerPage.clickComplete();
+            addReportStep(
+                "Open Processor Portal login page",
+                "Processor Portal login page should open successfully.",
+                "Login page opened successfully."
+            );
 
-    // Tracking ID + Courier
-    await shipToCustomerPage.fillOutgoingTrackingAndCourier(orderId);
+            await loginPage.login(
+                process.env.EMAIL,
+                process.env.PASSWORD
+            );
 
-    // Save & Complete
-    await shipToCustomerPage.saveAndComplete();
+            await newPage.waitForPage();
+
+            addReportStep(
+                "Login to Processor Portal",
+                "Valid credentials should log in and navigate to the New Order page.",
+                "Login completed and New Order page loaded."
+            );
+
+            // =================================================
+            // STEP 2: OPEN EXPECTED
+            // =================================================
+
+            await expectedPage.open();
+
+            const orderId = await expectedPage.getTopOrderId();
+
+            expect(
+                orderId,
+                "A valid numeric Order ID should be available."
+            ).to.match(/^\d+$/);
+
+            addReportStep(
+                "Open Expected page and get Order ID",
+                "Expected page should display a valid numeric Order ID.",
+                `Expected page opened. Selected Order ID: ${orderId}.`
+            );
+
+            // =================================================
+            // STEP 3: OPEN ORDER DETAILS
+            // =================================================
+
+            await expectedPage.clickOrderId(orderId);
+
+            await expectedPage.waitForOrderDetails();
+
+            const docId = await expectedPage.getDocId();
+
+            expect(
+                docId,
+                "A valid numeric Doc ID should be available."
+            ).to.match(/^\d+$/);
+
+            const country =
+                process.env.PROCESS_COUNTRY || "Afghanistan";
+
+            await expectedPage.verifyOrderDetails({
+                orderId,
+                docId,
+                country
+            });
+
+            addReportStep(
+                "Verify Order Details",
+                "Order ID, Doc ID and Country should match the selected order.",
+                `Order ID: ${orderId}; Doc ID: ${docId}; Country: ${country}. All details verified.`
+            );
+
+            if (activeReporter) {
+                activeReporter.addDetail("ORDER ID", orderId);
+                activeReporter.addDetail("DOC ID", docId);
+                activeReporter.addDetail("COUNTRY", country);
+            }
+
+            // =================================================
+            // STEP 4: GET PROCESSING STEPS DYNAMICALLY
+            // =================================================
+
+            const processingSteps =
+                await expectedPage.getProcessingStepsFromOrder();
+
+            expect(
+                processingSteps.length,
+                "At least one processing step should be available."
+            ).to.be.greaterThan(0);
+
+            console.log("");
+            console.log(`Order ID: ${orderId}`);
+            console.log(`Doc ID: ${docId}`);
+            console.log(`Country: ${country}`);
+            console.log(`Processing Step Count: ${processingSteps.length}`);
+            console.log(
+                `Processing Steps: ${processingSteps.join(", ")}`
+            );
+
+            if (activeReporter) {
+                activeReporter.addDetail(
+                    "TOTAL PROCESSING STEPS",
+                    processingSteps.length
+                );
+
+                activeReporter.addDetail(
+                    "PROCESSING STEPS",
+                    processingSteps.join(", ")
+                );
+            }
+
+            addReportStep(
+                "Read processing steps dynamically",
+                "All visible processing steps should be extracted from the Expected page tracker.",
+                `Found ${processingSteps.length} processing steps: ${processingSteps.join(", ")}.`
+            );
+
+            // =================================================
+            // STEP 5: SAVE & PROCESS
+            // =================================================
+
+            await expectedPage.clickSaveAndProcess();
+
+            addReportStep(
+                "Click Save & Process",
+                "The selected order should be saved and moved into processing.",
+                `Save & Process completed for Order ID ${orderId}.`
+            );
+
+            // =================================================
+            // STEP 6: PROCESS EVERY STEP
+            // =================================================
+
+            for (let i = 0; i < processingSteps.length; i++) {
+
+                const currentStep = processingSteps[i];
+
+                console.log("");
+                console.log(
+                    `Processing Step ${i + 1}/${processingSteps.length}: ${currentStep}`
+                );
+
+                if (activeReporter) {
+                    activeReporter.addDetail(
+                        `PROCESSING STEP ${i + 1}`,
+                        currentStep
+                    );
+                }
+
+                // ---------------------------------------------
+                // DROP OFF
+                // ---------------------------------------------
+
+                await dropOffPage.open();
+
+                addReportStep(
+                    `Processing ${currentStep} - Open DropOff`,
+                    "DropOff page should open successfully.",
+                    `DropOff page opened for processing step: ${currentStep}.`
+                );
+
+                await dropOffPage.searchOrder(orderId);
+
+                await dropOffPage.verifyOrderId(orderId);
+
+                const dropOffStop =
+                    await dropOffPage.verifyStop(orderId);
+
+                console.log(`Drop Off Stop: ${dropOffStop}`);
+
+                addReportStep(
+                    `Processing ${currentStep} - Verify DropOff order`,
+                    "The selected Order ID and its Stop should be displayed in DropOff.",
+                    `Order ID: ${orderId}; DropOff Stop: ${dropOffStop}.`
+                );
+
+                // ---------------------------------------------
+                // SELECT ORDER
+                // ---------------------------------------------
+
+                await dropOffPage.selectOrder(orderId);
+
+                addReportStep(
+                    `Processing ${currentStep} - Select DropOff order`,
+                    "The selected order checkbox should be selected.",
+                    `Order ${orderId} selected in DropOff.`
+                );
+
+                // ---------------------------------------------
+                // MOVE TO COURIER
+                // ---------------------------------------------
+
+                await dropOffPage.clickCourier();
+
+                await dropOffPage.waitForCourierCheckbox(orderId);
+
+                addReportStep(
+                    `Processing ${currentStep} - Move to Courier`,
+                    "The order should move from DropOff Queue to Courier.",
+                    `Order ${orderId} is available in Courier.`
+                );
+
+                // ---------------------------------------------
+                // COMPLETE COURIER
+                // ---------------------------------------------
+
+                await dropOffPage.processCourier(orderId, docId);
+
+                addReportStep(
+                    `Processing ${currentStep} - Complete Courier`,
+                    "Courier processing should complete successfully.",
+                    `Courier processing completed for Order ID ${orderId}, Doc ID ${docId}.`
+                );
+
+                // ---------------------------------------------
+                // PICKUP
+                // ---------------------------------------------
+
+                await pickupPage.open();
+
+                await pickupPage.searchOrder(orderId);
+
+                await pickupPage.verifyOrderId(orderId);
+
+                const pickupStop =
+                    await pickupPage.verifyStop(orderId);
+
+                console.log(`Pickup Stop: ${pickupStop}`);
+
+                addReportStep(
+                    `Processing ${currentStep} - Verify Pickup order`,
+                    "The order and its Stop should be displayed in Pickup.",
+                    `Order ID: ${orderId}; Pickup Stop: ${pickupStop}.`
+                );
+
+                // ---------------------------------------------
+                // SELECT PICKUP ORDER
+                // ---------------------------------------------
+
+                await pickupPage.selectOrder(orderId);
+
+                addReportStep(
+                    `Processing ${currentStep} - Select Pickup order`,
+                    "The order checkbox should be selected in Pickup.",
+                    `Order ${orderId} selected in Pickup.`
+                );
+
+                // ---------------------------------------------
+                // COMPLETE PICKUP
+                // ---------------------------------------------
+
+                await pickupPage.clickComplete();
+
+                addReportStep(
+                    `Processing ${currentStep} - Complete Pickup`,
+                    "The selected Pickup order should be completed.",
+                    `Complete action executed for Order ID ${orderId}.`
+                );
+
+                // ---------------------------------------------
+                // CHANGE DATE AND SAVE
+                // ---------------------------------------------
+
+                await pickupPage.saveChangeDate();
+
+                addReportStep(
+                    `Processing ${currentStep} - Save Pickup date`,
+                    "The changed Pickup date should be saved successfully.",
+                    `Pickup date saved for Order ID ${orderId}.`
+                );
+
+                console.log(
+                    `${currentStep} completed successfully.`
+                );
+            }
+
+            // =================================================
+            // STEP 7: ALL PROCESSING STEPS COMPLETED
+            // =================================================
+
+            console.log("");
+            console.log("All processing steps completed.");
+
+            addReportStep(
+                "Verify all processing steps completed",
+                "Every processing step extracted from Expected should complete through DropOff, Courier and Pickup.",
+                `Completed ${processingSteps.length} processing steps: ${processingSteps.join(", ")}.`
+            );
+
+            // =================================================
+            // STEP 8: SHIP TO CUSTOMER
+            // =================================================
+
+            await shipToCustomerPage.open();
+
+            await shipToCustomerPage.searchOrder(orderId);
+
+            await shipToCustomerPage.verifyReadyToShip(orderId);
+
+            addReportStep(
+                "Open Ship To Customer and verify Ready to Ship",
+                "The processed order should be available in Ready to Ship.",
+                `Order ${orderId} is available in Ready to Ship.`
+            );
+
+            // ---------------------------------------------
+            // SELECT ORDER
+            // ---------------------------------------------
+
+            await shipToCustomerPage.selectOrder(orderId);
+
+            addReportStep(
+                "Select Ready to Ship order",
+                "The order checkbox should be selected.",
+                `Order ${orderId} selected in Ready to Ship.`
+            );
+
+            // ---------------------------------------------
+            // COMPLETE
+            // ---------------------------------------------
+
+            await shipToCustomerPage.clickComplete();
+
+            addReportStep(
+                "Click Complete",
+                "The application should open the shipping completion details.",
+                `Complete action executed for Order ID ${orderId}.`
+            );
+
+            // ---------------------------------------------
+            // TRACKING ID AND COURIER
+            // ---------------------------------------------
+
+            await shipToCustomerPage.fillOutgoingTrackingAndCourier(
+                orderId
+            );
+
+            addReportStep(
+                "Enter outgoing Tracking ID and Courier",
+                "Outgoing Tracking ID and Courier should be entered successfully.",
+                `Outgoing tracking and courier details entered for Order ID ${orderId}.`
+            );
+
+            // ---------------------------------------------
+            // SAVE & COMPLETE
+            // ---------------------------------------------
+
+            await shipToCustomerPage.saveAndComplete();
+
+            addReportStep(
+                "Save & Complete Ship To Customer",
+                "Shipping details should be saved and the order should complete.",
+                `Save & Complete action executed for Order ID ${orderId}.`
+            );
+
+            // =================================================
+            // FINAL PASS
+            // =================================================
+
+            console.log("");
+            console.log("==========================================");
+            console.log("FINAL PASS");
+            console.log(`Order ID: ${orderId}`);
+            console.log(`Doc ID: ${docId}`);
+            console.log(
+                `Processing Steps Completed: ${processingSteps.join(", ")}`
+            );
+            console.log("Ship To Customer: Completed");
+            console.log("==========================================");
+
+            addReportStep(
+                "Final order processing result",
+                "The complete order workflow should finish successfully through Ship To Customer.",
+                `Order ID: ${orderId}; Doc ID: ${docId}; Processing Steps: ${processingSteps.length}; Ship To Customer: Completed.`
+            );
+        }
+    );
 
     // =====================================================
-    // SHIP TO CUSTOMER COMPLETED
+    // BROWSER CLEANUP
     // =====================================================
 
-    // await shipToCustomerPage.verifyCompleted(
-    //     orderId
-    // );
-
-    // =====================================================
-    // FINAL PASS
-    // =====================================================
-
-    console.log("");
-    console.log("==========================================");
-    console.log("FINAL PASS");
-    console.log(`Order ID: ${orderId}`);
-    console.log(`Doc ID: ${docId}`);
-    console.log(`Processing Steps Completed: ${processingSteps.join(", ")}`);
-    console.log("Ship To Customer: Completed");
-    console.log("==========================================");
-  });
-
-  after(async function () {
-    if (driver) {
-      try {
-        await driver.quit();
-      } catch (error) {}
-    }
-  });
+    after(async function () {
+        if (driver) {
+            try {
+                await driver.quit();
+                console.log("Browser closed successfully.");
+            } catch (error) {
+                console.error(
+                    "Error while closing browser:",
+                    error.message
+                );
+            }
+        }
+    });
 });
