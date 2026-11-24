@@ -3759,7 +3759,7 @@ it("TC_DROPOFF_015 - Verify order moves from DropOff Queue to Courier, Completed
             "\n✓ Successfully read all three section totals for the selected date."
         ); 
         } finally {
-            await dropOffDetail.clearDateFilterOrRefresh(); 
+            // await dropOffDetail.clearDateFilterOrRefresh(); 
         }
     }
     );   

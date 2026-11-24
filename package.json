@@ -9,6 +9,7 @@
     "test_global_search": "mocha tests/globalSearch/globalSearch.test.js --reporter mochawesome --reporter-options reportDir=reports/global-search,reportFilename=GlobalSearchReport,html=true,json=true,overwrite=true,quiet=true",
     "test_processor_portal": "mocha tests/all_tests/processorPortalAllTests.test.js --reporter mochawesome --reporter-options reportDir=reports/processor-portal,reportFilename=ProcessorPortalReport,html=true,json=true,overwrite=true",
     "test_create_new_order": "mocha tests/new/createNewOrder.test.js --reporter mochawesome --reporter-options reportDir=reports/new-order,reportFilename=CreateNewOrderReport,html=true,json=true,overwrite=true",
+    
     "test_process": "mocha tests/process/process.test.js --reporter mochawesome --reporter-options reportDir=reports/process,reportFilename=ProcessReport,html=true,json=true,overwrite=true",  
     "test_processor_portal_email": "node utils/runTestsAndEmail.js tests/all_tests/processorPortalAllTests.test.js reports/processor-portal ProcessorPortalReport",
     "test_global_search_email": "node utils/runTestsAndEmail.js tests/globalSearch/globalSearch.test.js reports/global-search GlobalSearchReport",

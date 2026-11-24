@@ -1,3 +1,4 @@
+
 const { By, until } = require("selenium-webdriver");
 
 class LoginPage {
@@ -16,11 +17,10 @@ class LoginPage {
         this.loginButton =
             By.xpath("//button[normalize-space()='Sign In']");
 
-        // Other elements
-      this.dashboardWelcome = By.xpath(
-    "//*[normalize-space()='Welcome to WCS Express']"
+        // Dashboard elements
+        this.dashboardWelcome = By.xpath(
+            "//*[normalize-space()='Welcome to WCS Express']"
         );
-        
 
         this.forgotPassword =
             By.xpath("//p[contains(text(),'Forgot password')]");
@@ -30,7 +30,6 @@ class LoginPage {
                 "//*[contains(text(),'Invalid email or password')]"
             );
     }
-
 
     // ==========================================
     // OPEN LOGIN PAGE
@@ -60,7 +59,6 @@ class LoginPage {
         // Give React time to finish rendering
         await this.driver.sleep(1000);
     }
-
 
     // ==========================================
     // FIND VISIBLE + ENABLED ELEMENT
@@ -100,7 +98,6 @@ class LoginPage {
         );
     }
 
-
     // ==========================================
     // ENTER EMAIL
     // ==========================================
@@ -128,7 +125,6 @@ class LoginPage {
 
         await this.driver.sleep(300);
 
-
         // Try normal Selenium interaction first
         try {
 
@@ -147,7 +143,6 @@ class LoginPage {
             console.log(
                 "Using React-compatible JavaScript input..."
             );
-
 
             // React-compatible native value setter
             await this.driver.executeScript(
@@ -182,7 +177,6 @@ class LoginPage {
             );
         }
 
-
         // Verify email was entered
         await this.driver.wait(
             async () => {
@@ -197,7 +191,6 @@ class LoginPage {
                 } catch (e) {
 
                     return false;
-
                 }
 
             },
@@ -206,7 +199,6 @@ class LoginPage {
 
         console.log("✓ Email entered");
     }
-
 
     // ==========================================
     // ENTER PASSWORD
@@ -233,7 +225,6 @@ class LoginPage {
         );
 
         await this.driver.sleep(300);
-
 
         try {
 
@@ -285,7 +276,6 @@ class LoginPage {
             );
         }
 
-
         // Verify password was entered
         await this.driver.wait(
             async () => {
@@ -300,7 +290,6 @@ class LoginPage {
                 } catch (e) {
 
                     return false;
-
                 }
 
             },
@@ -310,6 +299,90 @@ class LoginPage {
         console.log("✓ Password entered");
     }
 
+    // ==========================================
+    // WAIT UNTIL CAPTCHA IS SOLVED
+    // ==========================================
+
+    async waitForCaptchaSolved(timeout = 180000) {
+
+        console.log("--------------------------------");
+        console.log("Please solve CAPTCHA manually...");
+        console.log("Waiting for CAPTCHA verification...");
+        console.log("--------------------------------");
+
+        await this.driver.wait(
+            async () => {
+
+                try {
+
+                    const captchaSolved =
+                        await this.driver.executeScript(() => {
+
+                            // Google reCAPTCHA
+                            const googleCaptcha =
+                                document.querySelector(
+                                    'textarea[name="g-recaptcha-response"]'
+                                );
+
+                            if (
+                                googleCaptcha &&
+                                googleCaptcha.value.trim().length > 0
+                            ) {
+                                return true;
+                            }
+
+                            // hCaptcha
+                            const hCaptcha =
+                                document.querySelector(
+                                    'textarea[name="h-captcha-response"]'
+                                );
+
+                            if (
+                                hCaptcha &&
+                                hCaptcha.value.trim().length > 0
+                            ) {
+                                return true;
+                            }
+
+                            // Cloudflare Turnstile
+                            const turnstile =
+                                document.querySelector(
+                                    'input[name="cf-turnstile-response"]'
+                                );
+
+                            if (
+                                turnstile &&
+                                turnstile.value.trim().length > 0
+                            ) {
+                                return true;
+                            }
+
+                            return false;
+                        });
+
+                    if (captchaSolved) {
+
+                        console.log(
+                            "✓ CAPTCHA solved successfully."
+                        );
+
+                        return true;
+                    }
+
+                    return false;
+
+                } catch (error) {
+
+                    return false;
+                }
+
+            },
+            timeout,
+            "CAPTCHA was not solved within the allowed time."
+        );
+
+        console.log("✓ CAPTCHA verification detected.");
+    }
 
     // ==========================================
     // CLICK SIGN IN
@@ -358,32 +431,27 @@ class LoginPage {
         }
     }
 
-
     // ==========================================
     // LOGIN
     // ==========================================
 
     async login(email, password) {
 
+        // Enter email
         await this.enterEmail(email);
 
+        // Enter password
         await this.enterPassword(password);
 
-        console.log("--------------------------------");
-        console.log("Solve CAPTCHA manually...");
+        // Wait for manual CAPTCHA verification
+        await this.waitForCaptchaSolved(180000);
+
+        // Automatically click Sign In after CAPTCHA
         console.log(
-            "Selenium will click Sign In after 15 seconds."
+            "CAPTCHA completed. Clicking Sign In..."
         );
-        console.log("--------------------------------");
 
-
-        // Allow manual CAPTCHA solving
-        await this.driver.sleep(60000);
-
-
-        // Click Sign In
         await this.clickLogin();
-
 
         // Wait until dashboard is loaded
         await this.driver.wait(
@@ -398,50 +466,53 @@ class LoginPage {
                 );
 
             },
-            30000
+            30000,
+            "Dashboard did not load after login."
         );
 
         console.log("Login Successful");
     }
 
-  // ==========================================
-// VERIFY DASHBOARD
-// ==========================================
-async waitForDashboard(timeout = 30000) {
+    // ==========================================
+    // VERIFY DASHBOARD
+    // ==========================================
 
-    console.log("Waiting for WCS Express dashboard...");
+    async waitForDashboard(timeout = 30000) {
 
-    // Wait for dashboard URL
-    await this.driver.wait(
-        until.urlIs(
-            "https://wcscustomerportal.azurewebsites.net/"
-        ),
-        timeout
-    );
+        console.log(
+            "Waiting for WCS Express dashboard..."
+        );
 
-    console.log("✓ Dashboard URL detected.");
-
-    // Now verify dashboard text
-    const dashboardElement =
+        // Wait for dashboard URL
         await this.driver.wait(
-            until.elementLocated(
-                this.dashboardWelcome
+            until.urlIs(
+                "https://wcscustomerportal.azurewebsites.net/"
             ),
             timeout
         );
 
-    await this.driver.wait(
-        until.elementIsVisible(dashboardElement),
-        timeout
-    );
+        console.log("✓ Dashboard URL detected.");
 
-    console.log("✓ WCS Express dashboard is displayed.");
+        // Verify dashboard text
+        const dashboardElement =
+            await this.driver.wait(
+                until.elementLocated(
+                    this.dashboardWelcome
+                ),
+                timeout
+            );
 
-    return dashboardElement;
+        await this.driver.wait(
+            until.elementIsVisible(dashboardElement),
+            timeout
+        );
+
+        console.log(
+            "✓ WCS Express dashboard is displayed."
+        );
+
+        return dashboardElement;
     }
-    
-    
-
 
     // ==========================================
     // ERROR MESSAGE
