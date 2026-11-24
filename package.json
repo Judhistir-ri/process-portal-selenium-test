@@ -14,8 +14,8 @@
     "test_processor_portal_email": "node utils/runTestsAndEmail.js tests/all_tests/processorPortalAllTests.test.js reports/processor-portal ProcessorPortalReport",
     "test_global_search_email": "node utils/runTestsAndEmail.js tests/globalSearch/globalSearch.test.js reports/global-search GlobalSearchReport",
     "test_create_new_order_email": "node utils/runTestsAndEmail.js tests/new/createNewOrder.test.js reports/new-order CreateNewOrderReport",
-    "test_process_email": "node utils/runTestsAndEmail.js tests/process/process.test.js reports/process ProcessReport"
-
+    "test_process_email": "node utils/runTestsAndEmail.js tests/process/process.test.js reports/process ProcessReport",
+    "test_new_order_process_email": "node utils/runTestsAndEmail.js tests/all_tests/newOrderAndProcess.test.js reports/new-order-process NewOrderAndProcessReport"
   },
   "keywords": [],
   "author": "",
