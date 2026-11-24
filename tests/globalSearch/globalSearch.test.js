@@ -16,62 +16,6 @@ const TestReporter = require("../../utils/testReporter");
 // WAIT FOR EXCEL DOWNLOAD
 // --------------------------------------------------
 
-// async function waitForExcelDownload(
-//     downloadDir,
-//     existingFiles = [],
-//     timeout = 90000
-// ) {
-//     console.log("Waiting for Excel file download...");
-
-//     const startTime = Date.now();
-
-//     while (Date.now() - startTime < timeout) {
-
-//         const files = await fs.promises.readdir(downloadDir);
-
-//         // Check for an Excel file.
-//         const excelFiles = files.filter(file =>
-//             /\.(xlsx|xls)$/i.test(file) &&
-//             !existingFiles.includes(file)
-//         );
-
-//         // Check whether Chrome is still downloading.
-//         const downloadingFiles = files.filter(file =>
-//             file.endsWith(".crdownload")
-//         );
-
-//         if (excelFiles.length > 0 && downloadingFiles.length === 0) {
-
-//             const downloadedFile = excelFiles
-//                 .map(file => ({
-//                     name: file,
-//                     fullPath: path.join(downloadDir, file)
-//                 }))
-//                 .sort((a, b) => {
-//                     return fs.statSync(b.fullPath).mtimeMs -
-//                            fs.statSync(a.fullPath).mtimeMs;
-//                 })[0];
-
-//             const stats = await fs.promises.stat(
-//                 downloadedFile.fullPath
-//             );
-
-//             expect(stats.size).to.be.greaterThan(0);
-
-//             console.log("Excel file downloaded successfully.");
-//             console.log(`File Name: ${downloadedFile.name}`);
-//             console.log(`File Size: ${stats.size} bytes`);
-
-//             return downloadedFile;
-//         }
-
-//         await new Promise(resolve => setTimeout(resolve, 1000));
-//     }
-
-//     throw new Error(
-//         `Excel download failed. No completed Excel file found within ${timeout}ms.`
-//     );
-// }
 
 async function waitForExcelDownload(downloadDir, existingFiles = {}, timeout = 90000) {
     console.log("Waiting for Excel file download...");
@@ -461,10 +405,6 @@ console.log(
         }
     });
 
-    // --------------------------------------------------
-// TC_GS_002 - SEARCH BY CUSTOMER
-// --------------------------------------------------
-
 it("TC_GS_002 - Verify user can search documents by customer name", async function () {
     this.timeout(180000);
 
@@ -610,131 +550,6 @@ it("TC_GS_003 - Verify user can search documents by customer email", async funct
     console.log(`Customer email search completed successfully for ${userEmail}.`);
 });
 
-// --------------------------------------------------
-// TC_GS_004 - SEARCH BY ORIGIN COUNTRY
-// --------------------------------------------------
-
-// it("TC_GS_004 - Verify documents can be searched by Origin Country",
-//     async function () {
-//         this.timeout(300000);
-
-//         // First 10 countries shown in the dropdown alphabetically.
-//         const originCountries = [
-//             "Afghanistan",
-//             "Albania",
-//             "Algeria",
-//             "Andorra",
-//             "Angola",
-//             "Antigua and Barbuda",
-//             "Argentina",
-//             "Armenia",
-//             "Australia",
-//             "Austria"
-//         ];
-
-//         const allResults = [];
-
-//         for (const countryName of originCountries) {
-//             console.log("\n==========================================");
-//             console.log(`ORIGIN COUNTRY: ${countryName}`);
-//             console.log("==========================================");
-
-//             // Step 1: Select Origin Country.
-//             await globalSearchPage.selectOriginCountry(countryName);
-
-//             // Step 2: Click Search.
-//             await globalSearchPage.clickSearch();
-
-//             // Step 3: Wait for results to finish loading.
-//             await globalSearchPage.waitForSearchToFinish(60000);
-
-//             // Step 4: Get total document count.
-//             const totalDocuments =
-//                 await globalSearchPage.getTotalDocumentsFound();
-
-//             console.log(
-//                 `Total Documents Found for ${countryName}: ${totalDocuments}`
-//             );
-
-//             // Step 5: Read the visible result rows.
-//             const results =
-//                 await globalSearchPage.getGlobalSearchTableData();
-
-//             // Step 6: Add country and count information.
-//             allResults.push({
-//                 searchedOriginCountry: countryName,
-//                 totalDocuments,
-//                 documents: results
-//             });
-
-//             console.log(
-//                 `Current Page Rows: ${results.length}`
-//             );
-
-//             // Step 7: Validate document count.
-//             expect(
-//                 totalDocuments,
-//                 `Document count should be available for ${countryName}`
-//             ).to.be.a("number");
-
-//             expect(totalDocuments).to.be.at.least(0);
-
-//             // Step 8: Verify that displayed rows match the searched origin.
-//             for (const document of results) {
-//                 expect(
-//                     document.originCountry.toLowerCase(),
-//                     `Origin Country mismatch for Order ID ${document.orderId}`
-//                 ).to.equal(countryName.toLowerCase());
-//             }
-
-//             console.log(
-//                 `Origin Country search completed: ${countryName}`
-//             );
-
-//             // Step 9: Clear only the Origin Country filter
-//             // before selecting the next country.
-//             await globalSearchPage.clearSearchFilters();
-//         }
-
-//         // --------------------------------------------------
-//         // FINAL SUMMARY
-//         // --------------------------------------------------
-
-//         console.log("\n========== ORIGIN COUNTRY SEARCH SUMMARY ==========");
-
-//         for (const result of allResults) {
-//             console.log(
-//                 `${result.searchedOriginCountry}: ` +
-//                 `${result.totalDocuments} documents`
-//             );
-//         }
-
-//         console.log("==================================================");
-
-//         // --------------------------------------------------
-//         // PRINT DOCUMENT DETAILS TABLE
-//         // --------------------------------------------------
-
-//         const tableData = [];
-
-//         for (const result of allResults) {
-//             for (const document of result.documents) {
-//                 tableData.push({
-//                     OrderId: document.orderId,
-//                     DocId: document.docId,
-//                     Country: document.country,
-//                     OriginCountry: document.originCountry,
-//                     CustomerName: document.customerName
-//                 });
-//             }
-//         }
-
-//         console.log("\n========== DOCUMENT DETAILS ==========");
-//         console.table(tableData);
-//         console.log("=====================================");
-//     }
-// );
-
 it("TC_GS_004 - Verify documents can be searched by Origin Country", async function () {
     this.timeout(300000);
 
@@ -862,11 +677,6 @@ it("TC_GS_004 - Verify documents can be searched by Origin Country", async funct
     console.log("====================================================");
 });
 
-
-// --------------------------------------------------
-// TC_GS_005 - SEARCH BY DESTINATION COUNTRY
-// --------------------------------------------------
-
 it("TC_GS_005 - Verify user can search documents by destination country", async function () {
     this.timeout(180000);
 
@@ -954,10 +764,6 @@ it("TC_GS_005 - Verify user can search documents by destination country", async 
         );
     }
 });
-
-// --------------------------------------------------
-// TC_GS_006 - SEARCH BY DESCRIPTION
-// --------------------------------------------------
 
 it("TC_GS_006 - Verify user can search documents by Description", async function () {
     this.timeout(300000);
@@ -1412,10 +1218,6 @@ it("TC_GS_012 - Verify user can search documents by From Date", async function (
     }
 });
 
-// --------------------------------------------------
-// TC_GS_013 - SEARCH BY FROM DATE AND TO DATE
-// --------------------------------------------------
-
 it("TC_GS_013 - Verify user can search documents by From Date and To Date", async function () {
     this.timeout(180000);
 
@@ -1500,12 +1302,6 @@ expect(
         "TC_GS_013 passed: Date range search completed successfully."
     );
 });
-
-
-
-// --------------------------------------------------
-// TC_GS_014 - SEARCH BY TRACKING ID
-// --------------------------------------------------
 
 it("TC_GS_014 - Verify user can search documents by Tracking Id",
     async function () {
@@ -1749,10 +1545,6 @@ it("TC_GS_014 - Verify user can search documents by Tracking Id",
     }
 );
 
-
-// --------------------------------------------------
-// TC_GS_015 - EXPORT GLOBAL SEARCH RESULTS TO EXCEL
-// --------------------------------------------------
 
 it("TC_GS_015 - Verify user can export Global Search results to Excel",
     async function () {

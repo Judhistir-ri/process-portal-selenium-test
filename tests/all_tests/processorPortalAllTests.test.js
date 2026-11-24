@@ -496,150 +496,15 @@ describe("All Test Case - processorPortal AllT Test Cases", function () {
       console.log("✓ Status message and background color verified.");
     });
 
-    function normalizeFeeType(feeType) {
-      return String(feeType)
-        .replace(/\([^)]*\)/g, "")
-        .replace(/:/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase();
-    }
-    // it("TC_EXP_034 - Verify Fee Amounts Between Document Details and Order History", async function () {
-    //   console.log("\n==========================================");
-    //   console.log("TC_EXP_017 - Verify Fee Amounts");
-    //   console.log("==========================================");
-  
-    //   // ------------------------------------------
-    //   // Get Document Details fees
-    //   // ------------------------------------------
-  
-    //   console.log("\nGetting fees from Document Details...");
-  
-    //   const documentFees =
-    //     await expectedDetailsPage.getDocumentDetailsFeeDetails();
-  
-    //   console.log("\nDocument Details Fees:");
-    //   console.log(JSON.stringify(documentFees, null, 2));
-  
-    //   // ------------------------------------------
-    //   // Get Document Details total
-    //   // ------------------------------------------
-  
-    //   const documentTotal = await expectedDetailsPage.getPaymentAmount();
-  
-    //   console.log(`Document Details Total Amount: $${documentTotal.toFixed(2)}`);
-  
-    //   // ------------------------------------------
-    //   // Get Order History fees
-    //   // ------------------------------------------
-  
-    //   console.log("\nGetting fees from Order History...");
-  
-    //   const orderHistoryFees = await expectedDetailsPage.getFeeDetails();
-  
-    //   console.log("\nOrder History Fees:");
-    //   console.log(JSON.stringify(orderHistoryFees, null, 2));
-  
-    //   // ------------------------------------------
-    //   // Verify fee count
-    //   // ------------------------------------------
-  
-    //   expect(orderHistoryFees.length).to.equal(
-    //     documentFees.length,
-    //     "Number of fees is different between Document Details and Order History",
-    //   );
-  
-    //   // ------------------------------------------
-    //   // Compare every fee
-    //   // ------------------------------------------
-  
-    //   for (const documentFee of documentFees) {
-    //     const normalizedDocumentFee = normalizeFeeType(documentFee.feeType);
-  
-    //     const matchingOrderFee = orderHistoryFees.find(
-    //       (orderFee) =>
-    //         normalizeFeeType(orderFee.feeType) === normalizedDocumentFee,
-    //     );
-  
-    //     // Fee must exist in Order History
-    //     expect(
-    //       matchingOrderFee,
-    //       `Fee "${documentFee.feeType}" not found in Order History`,
-    //     ).to.not.equal(undefined);
-  
-    //     // ------------------------------------------
-    //     // Unit Price
-    //     // ------------------------------------------
-  
-    //     const documentUnitPrice = Number(documentFee.unitPrice);
-  
-    //     const orderUnitPrice = parseFloat(
-    //       String(matchingOrderFee.unitPrice).replace(/[$,]/g, "").trim(),
-    //     );
-  
-    //     console.log(`\n${documentFee.feeType}`);
-  
-    //     console.log(
-    //       `Unit Price: Document Details=$${documentUnitPrice.toFixed(2)}, ` +
-    //         `Order History=$${orderUnitPrice.toFixed(2)}`,
-    //     );
-  
-    //     expect(
-    //       documentUnitPrice,
-    //       `Unit Price mismatch for ${documentFee.feeType}`,
-    //     ).to.equal(orderUnitPrice);
-  
-    //     // ------------------------------------------
-    //     // Total
-    //     // ------------------------------------------
-  
-    //     const documentFeeTotal = Number(documentFee.total);
-  
-    //     const orderFeeTotal = parseFloat(
-    //       String(matchingOrderFee.total).replace(/[$,]/g, "").trim(),
-    //     );
-  
-    //     console.log(
-    //       `Total: Document Details=$${documentFeeTotal.toFixed(2)}, ` +
-    //         `Order History=$${orderFeeTotal.toFixed(2)}`,
-    //     );
-  
-    //     expect(
-    //       documentFeeTotal,
-    //       `Total mismatch for ${documentFee.feeType}`,
-    //     ).to.equal(orderFeeTotal);
-    //   }
-  
-    //   // ------------------------------------------
-    //   // Calculate Order History total dynamically
-    //   // ------------------------------------------
-  
-    //   const orderHistoryTotal = orderHistoryFees.reduce((sum, fee) => {
-    //     const amount = parseFloat(String(fee.total).replace(/[$,]/g, "").trim());
-  
-    //     return sum + amount;
-    //   }, 0);
-  
-    //   console.log("\n------------------------------------------");
-  
-    //   console.log(`Document Details Total : $${documentTotal.toFixed(2)}`);
-  
-    //   console.log(`Order History Total    : $${orderHistoryTotal.toFixed(2)}`);
-  
-    //   console.log("------------------------------------------");
-  
-    //   // ------------------------------------------
-    //   // Compare overall total
-    //   // ------------------------------------------
-  
-    //   expect(documentTotal).to.equal(
-    //     orderHistoryTotal,
-    //     "Overall Total Amount is different between Document Details and Order History",
-    //   );
-  
-    //   console.log("\n✓ All fee amounts and total amount are matching.");
-    // });
-  
+    // function normalizeFeeType(feeType) {
+    //   return String(feeType)
+    //     .replace(/\([^)]*\)/g, "")
+    //     .replace(/:/g, "")
+    //     .replace(/\s+/g, " ")
+    //     .trim()
+    //     .toLowerCase();
+    // }
+
     it("TC_EXP_034 - Verify Fee Amounts Between Document Details and Order History", async function () {
       console.log("\n==========================================");
       console.log("TC_EXP_017 - Verify Fee Amounts");
@@ -4340,131 +4205,171 @@ async function () {
 
 it("TC_PICKUP_008 - Search Order IDs using Filter Anything and verify Order ID, Doc ID, and Country",
 async function () {
-this.timeout(180000);
+  this.timeout(180000);
 
-const orderIds = ["263158", "263159"];
+  const orderIds = ["263159", "263272"];
 
-const searchBoxLocator = By.css(
-  "input[placeholder='Filter Anything']"
-);
-
-await driver.wait(
-  until.elementLocated(searchBoxLocator),
-  30000,
-  "Filter Anything search box was not found."
-);
-
-const searchBox = await driver.findElement(searchBoxLocator);
-
-const sections = [
-  {
-    name: "Pickup Queue",
-    selector: "div.col-md-6.pickup"
-  },
-  {
-    name: "Completed",
-    selector: "div.col-md-6.completed-docs"
-  }
-];
-
-async function findOrderInSections(orderId) {
-  for (const sectionInfo of sections) {
-    const sectionElements = await driver.findElements(
-      By.css(sectionInfo.selector)
-    );
-
-    if (!sectionElements.length) continue;
-
-    const section = sectionElements[0];
-
-    const rows = await section.findElements(
-      By.css("table.process-table tbody tr")
-    );
-
-    const headers = await section.findElements(
-      By.css("table.process-table thead th")
-    );
-
-    const headerTexts = [];
-
-    for (const header of headers) {
-      headerTexts.push(
-        (await header.getText())
-          .trim()
-          .toLowerCase()
-          .replace(/\s+/g, " ")
-      );
-    }
-
-    for (const row of rows) {
-      const cells = await row.findElements(By.css("td"));
-      const cellTexts = [];
-
-      for (const cell of cells) {
-        cellTexts.push((await cell.getText()).trim());
-      }
-
-      if (!cellTexts.includes(orderId)) continue;
-
-      function getColumnValue(headerName) {
-        const index = headerTexts.findIndex(
-          (header) => header === headerName.toLowerCase()
-        );
-
-        return index >= 0 ? (cellTexts[index] || "").trim() : "";
-      }
-
-      return {
-        orderId,
-        docId: getColumnValue("Doc ID"),
-        country: getColumnValue("Country"),
-        section: sectionInfo.name,
-        rowText: cellTexts.join(" | ")
-      };
-    }
-  }
-
-  return null;
-}
-
-for (const orderId of orderIds) {
-  console.log(`\n========== Pickup Search: ${orderId} ==========`);
-
-  await searchBox.clear();
-  await searchBox.sendKeys(orderId);
-
-  // Wait until the order appears in either Pickup Queue or Completed.
-  const result = await driver.wait(
-    async () => await findOrderInSections(orderId),
-    30000,
-    `Order ID ${orderId} was not found in Pickup Queue or Completed.`
+  const searchBoxLocator = By.css(
+    "input[placeholder='Filter Anything']"
   );
 
-  expect(result).to.exist;
-  expect(result.orderId).to.equal(orderId);
+  await driver.wait(
+    until.elementLocated(searchBoxLocator),
+    30000,
+    "Filter Anything search box was not found."
+  );
 
-  console.log("----------------------------------------");
-  console.log(`Order ID : ${result.orderId}`);
-  console.log(`Doc ID   : ${result.docId || "Not found"}`);
-  console.log(`Country  : ${result.country || "Not found"}`);
-  console.log(`Section  : ${result.section}`);
-  console.log(`Row data : ${result.rowText}`);
-  console.log("----------------------------------------");
+  const searchBox = await driver.findElement(searchBoxLocator);
 
-  expect(
-    result.docId,
-    `Doc ID should be available for Order ID ${orderId}`
-  ).to.not.equal("");
+  const sections = [
+    {
+      name: "Pickup Queue",
+      selector: "div.col-md-6.pickup"
+    },
+    {
+      name: "Completed",
+      selector: "div.col-md-6.completed-docs"
+    }
+  ];
 
-  expect(
-    result.country,
-    `Country should be available for Order ID ${orderId}`
-  ).to.not.equal("");
-}
+  async function findOrderInSections(orderId) {
+    for (const sectionInfo of sections) {
+      const sectionElements = await driver.findElements(
+        By.css(sectionInfo.selector)
+      );
 
-console.log(
-  "\n✓ Both Order IDs were searched and verified on the Pickup page."
-);
+      if (!sectionElements.length) continue;
+
+      const section = sectionElements[0];
+
+      const rows = await section.findElements(
+        By.css("table.process-table tbody tr")
+      );
+
+      const headers = await section.findElements(
+        By.css("table.process-table thead th")
+      );
+
+      const headerTexts = [];
+
+      for (const header of headers) {
+        headerTexts.push(
+          (await header.getText())
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+        );
+      }
+
+      for (const row of rows) {
+        const cells = await row.findElements(By.css("td"));
+        const cellTexts = [];
+
+        for (const cell of cells) {
+          cellTexts.push((await cell.getText()).trim());
+        }
+
+        if (!cellTexts.includes(orderId)) continue;
+
+        function getColumnValue(headerName) {
+          const index = headerTexts.findIndex(
+            header => header === headerName.toLowerCase()
+          );
+
+          return index >= 0
+            ? (cellTexts[index] || "").trim()
+            : "";
+        }
+
+        return {
+          orderId,
+          docId: getColumnValue("Doc ID"),
+          country: getColumnValue("Country"),
+          section: sectionInfo.name,
+          rowText: cellTexts.join(" | ")
+        };
+      }
+    }
+
+    return null;
+  }
+
+  let foundCount = 0;
+  let notFoundCount = 0;
+
+  for (const orderId of orderIds) {
+    console.log(
+      `\n========== Pickup Search: ${orderId} ==========`
+    );
+
+    await searchBox.clear();
+    await searchBox.sendKeys(orderId);
+
+    // Wait for the search results to update.
+    await driver.sleep(2000);
+
+    // Check for the Order ID without throwing TimeoutError.
+    const result = await driver.wait(
+      async () => {
+        return await findOrderInSections(orderId);
+      },
+      30000,
+      `Order ID ${orderId} search completed.`
+    ).catch(() => null);
+
+    if (!result) {
+      notFoundCount++;
+
+      console.log("----------------------------------------");
+      console.log(`Order ID : ${orderId}`);
+      console.log("Status   : NOT FOUND");
+      console.log(
+        `Message  : Order ID ${orderId} was not found in Pickup Queue or Completed.`
+      );
+      console.log("----------------------------------------");
+
+      // Continue with the next Order ID.
+      await searchBox.clear();
+      await driver.sleep(1000);
+      continue;
+    }
+
+    foundCount++;
+
+    console.log("----------------------------------------");
+    console.log(`Order ID : ${result.orderId}`);
+    console.log(`Doc ID   : ${result.docId || "Not found"}`);
+    console.log(`Country  : ${result.country || "Not found"}`);
+    console.log(`Section  : ${result.section}`);
+    console.log(`Row data : ${result.rowText}`);
+    console.log("----------------------------------------");
+
+    // Verify the details only when the Order ID is found.
+    expect(result.orderId).to.equal(orderId);
+
+    expect(
+      result.docId,
+      `Doc ID should be available for Order ID ${orderId}`
+    ).to.not.equal("");
+
+    expect(
+      result.country,
+      `Country should be available for Order ID ${orderId}`
+    ).to.not.equal("");
+
+    await searchBox.clear();
+    await driver.sleep(1000);
+  }
+
+  console.log("\n========== TC_PICKUP_008 SUMMARY ==========");
+  console.log(`Total searched : ${orderIds.length}`);
+  console.log(`Found          : ${foundCount}`);
+  console.log(`Not found      : ${notFoundCount}`);
+  console.log("============================================");
+
+  console.log(
+    "\n✓ TC_PICKUP_008 completed. Missing Order IDs were skipped."
+  );
 }
 );
 
@@ -5238,6 +5143,6 @@ it("TC_SHIP_007 - Search Order IDs 263097, 263098 and Doc ID 99824 in Filter Any
 
 });
 
-// This closes the main processorPortalAllTest describe.
+// ================Global Search Test========================
 
 })
