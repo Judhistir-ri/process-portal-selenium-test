@@ -662,19 +662,25 @@ class ExpectedDetailsPage {
     return true;
   }
 
-  async uploadMessageFile(filePath) {
-    if (!filePath) {
-      return false;
-    }
-
-    const fileInput = await this.waitForVisible(this.fileInput, 30000);
-
-    await fileInput.sendKeys(filePath);
-
-    await this.driver.sleep(2000);
-
-    return true;
+  
+async uploadMessageFile(filePath) {
+  if (!filePath) {
+    throw new Error("File path is required.");
   }
+
+  const fileInput = await this.driver.wait(
+    until.elementLocated(By.id("files")),
+    30000,
+    "Message attachment file input was not found."
+  );
+
+  await fileInput.sendKeys(filePath);
+
+  await this.driver.sleep(2000);
+
+  return true;
+}
+
 
   async clickSend(message) {
     const sendButton = await this.driver.wait(
@@ -4729,6 +4735,27 @@ async waitForLoadingSpinnerToDisappear(timeout = 60000) {
 
     return versions;
   }
+
+
+async clickPrintThread() {
+  const printThreadLink = By.xpath(
+    "//a[contains(@ng-click, 'printThread') and " +
+    "contains(normalize-space(.), 'print thread')]"
+  );
+
+  const link = await this.driver.wait(
+    until.elementLocated(printThreadLink),
+    30000,
+    "Print Thread link not found in Conversations."
+  );
+
+  await this.driver.wait(
+    until.elementIsVisible(link),
+    10000
+  );
+
+  await link.click();
+}
 
 
 

@@ -2028,6 +2028,190 @@ console.log("Verified Doc IDs:", docIds);
     await expectedDetailsPage.verifyLatestMessage(message);
   });
 
+  it("TC_EXP_0030 - Verify Write Message with File Attachment and Send", async function () {
+    this.timeout(120000);
+  
+    // Use an existing PDF from your project.
+    const filePath = path.join(process.cwd(), "assets", "sample.pdf");
+  
+    expect(
+      fs.existsSync(filePath),
+      `Test file not found: ${filePath}`
+    ).to.equal(true);
+  
+    const originalFileName = path.basename(filePath);
+  
+    const message = `Automation message with attachment ${Date.now()}`;
+  
+    // Step 1: Open Write New Message.
+    await expectedDetailsPage.clickWriteNewMessage();
+  
+    // Step 2: Get Doc ID from the conversation details.
+    const conversation = await driver.wait(
+      until.elementLocated(By.id("conversation")),
+      30000
+    );
+  
+    const conversationText = await conversation.getText();
+  
+    const docIdMatch = conversationText.match(/Doc#\s*:?\s*(\d+)/i);
+  
+    expect(
+      docIdMatch,
+      "Document ID was not found in conversation details."
+    ).to.not.equal(null);
+  
+    const docId = docIdMatch[1];
+  
+    // Step 3: Enter message.
+    await expectedDetailsPage.enterMessage(message);
+  
+    // Step 4: Upload file.
+    await expectedDetailsPage.uploadMessageFile(filePath);
+  
+    // Expected attachment name.
+    const expectedFileName = `${docId}-DOC-CA-${originalFileName}`;
+  
+    console.log("Document ID:", docId);
+    console.log("Original File Name:", originalFileName);
+    console.log("Expected Uploaded File Name:", expectedFileName);
+  
+    // Step 5: Click Send and wait for message to appear.
+    await expectedDetailsPage.clickSend(message);
+  
+    // Step 6: Verify message and uploaded attachment.
+    await expectedDetailsPage.verifyLatestMessage(message);
+  
+    await driver.wait(async () => {
+      try {
+        const text = await driver.findElement(
+          By.id("conversation")
+        ).getText();
+  
+        return text.includes(expectedFileName);
+      } catch (error) {
+        return false;
+      }
+    }, 60000, `Uploaded attachment not found: ${expectedFileName}`);
+  
+    const finalConversationText = await driver
+      .findElement(By.id("conversation"))
+      .getText();
+  
+    expect(finalConversationText).to.include(message);
+    expect(finalConversationText).to.include(expectedFileName);
+  
+    console.log("Verified Message:", message);
+    console.log("Verified Attachment:", expectedFileName);
+  
+    console.log(
+      "✓ TC_EXP_030 - Message and file attachment sent successfully."
+    );
+  });
+
+
+
+  
+it("TC_EXP_0031 - Verify Print Thread opens in a new window", async function () {
+  this.timeout(120000);
+
+  const originalWindow = await driver.getWindowHandle();
+  const originalWindows = await driver.getAllWindowHandles();
+
+  let printWindow = null;
+
+  try {
+    // TC_EXP_0030 has already sent the message.
+    // Wait for the Conversations section to display.
+    await driver.wait(
+      until.elementLocated(By.id("conversation")),
+      30000,
+      "Conversation section not found."
+    );
+
+    // Wait for Print Thread link beside the message.
+    const printThreadLink = By.xpath(
+      "//a[contains(@ng-click,'printThread') and " +
+      "contains(normalize-space(.),'print thread')]"
+    );
+
+    const link = await driver.wait(
+      until.elementLocated(printThreadLink),
+      30000,
+      "Print Thread link not found."
+    );
+
+    await driver.wait(
+      until.elementIsVisible(link),
+      10000
+    );
+
+    // Click Print Thread.
+    await link.click();
+
+    console.log("Clicked Print Thread.");
+
+    // Wait for a new window.
+    await driver.wait(async () => {
+      const handles = await driver.getAllWindowHandles();
+      return handles.length > originalWindows.length;
+    }, 30000, "Print Thread did not open a new window.");
+
+    // Identify the new window.
+    const currentWindows = await driver.getAllWindowHandles();
+
+    printWindow = currentWindows.find(
+      handle => !originalWindows.includes(handle)
+    );
+
+    expect(printWindow).to.exist;
+
+    // Switch to print window.
+    await driver.switchTo().window(printWindow);
+
+    // Wait for print page loading.
+    await driver.wait(async () => {
+      try {
+        return await driver.executeScript(
+          "return document.readyState === 'complete' || " +
+          "document.readyState === 'interactive';"
+        );
+      } catch (error) {
+        return false;
+      }
+    }, 30000, "Print window did not load.");
+
+    const printUrl = await driver.getCurrentUrl();
+
+    console.log("Print Thread URL:", printUrl);
+
+    expect(printUrl).to.not.equal("");
+
+    console.log("✓ Print Thread opened successfully.");
+
+  } finally {
+    // Close the print window.
+    if (printWindow) {
+      const handles = await driver.getAllWindowHandles();
+
+      if (handles.includes(printWindow)) {
+        await driver.switchTo().window(printWindow);
+        await driver.close();
+      }
+    }
+
+    // Return to the original WCS window.
+    const remainingWindows = await driver.getAllWindowHandles();
+
+    if (remainingWindows.includes(originalWindow)) {
+      await driver.switchTo().window(originalWindow);
+    }
+  }
+});
+
+  
+
+
   it("TC_EXP_0300 - Verify Print Conversation opens in a new tab", async function () {
   this.timeout(120000);
 
@@ -2333,14 +2517,14 @@ console.log("Verified Doc IDs:", docIds);
     }
   });
 
-  function normalizeFeeType(feeType) {
-    return String(feeType)
-      .replace(/\([^)]*\)/g, "")
-      .replace(/:/g, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  }
+  // function normalizeFeeType(feeType) {
+  //   return String(feeType)
+  //     .replace(/\([^)]*\)/g, "")
+  //     .replace(/:/g, "")
+  //     .replace(/\s+/g, " ")
+  //     .trim()
+  //     .toLowerCase();
+  // }
  
 
   
