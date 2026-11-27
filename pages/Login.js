@@ -7,19 +7,17 @@ class LoginPage {
     // ==============================
     // Login Page Locators
     // ==============================
-
     this.emailInput = By.id("email");
-
     this.passwordInput = By.id("password");
-
     this.signInForm = By.id("signIn");
-
     this.signInButton = By.xpath(
-      "//form[@id='signIn']//button[contains(normalize-space(), 'Sign In')]",
+      "//form[@id='signIn']//button[contains(normalize-space(), 'Sign In')]"
     );
 
-    // reCAPTCHA container
+    // reCAPTCHA locators
     this.recaptcha = By.id("gRecaptcha");
+    this.recaptchaIframe = By.css("#gRecaptcha iframe[title='reCAPTCHA']");
+    this.recaptchaCheckbox = By.id("recaptcha-anchor");
 
     // Security Advisory close button
     this.securityAdvisoryClose = By.id("cacheAdvisoryOk");
@@ -28,26 +26,21 @@ class LoginPage {
   // ==========================================
   // Open Login Page
   // ==========================================
-
   async open() {
     await this.driver.get(process.env.BASE_URL);
-
     await this.driver.wait(until.elementLocated(this.emailInput), 15000);
   }
 
   // ==========================================
   // Close Security Advisory if displayed
   // ==========================================
-
   async closeSecurityAdvisoryIfDisplayed() {
     try {
       const closeButton = await this.driver.findElement(
-        this.securityAdvisoryClose,
+        this.securityAdvisoryClose
       );
-
       if (await closeButton.isDisplayed()) {
         await closeButton.click();
-
         console.log("Security Advisory closed.");
       }
     } catch (error) {
@@ -58,15 +51,12 @@ class LoginPage {
   // ==========================================
   // Enter Email
   // ==========================================
-
   async enterEmail(email) {
     const emailField = await this.driver.wait(
       until.elementLocated(this.emailInput),
-      10000,
+      10000
     );
-
     await this.driver.wait(until.elementIsVisible(emailField), 10000);
-
     await emailField.clear();
     await emailField.sendKeys(email);
   }
@@ -74,42 +64,59 @@ class LoginPage {
   // ==========================================
   // Enter Password
   // ==========================================
-
   async enterPassword(password) {
     const passwordField = await this.driver.wait(
       until.elementLocated(this.passwordInput),
-      10000,
+      10000
     );
-
     await this.driver.wait(until.elementIsVisible(passwordField), 10000);
-
     await passwordField.clear();
     await passwordField.sendKeys(password);
   }
 
   // ==========================================
+  // Click "I'm not a robot" Checkbox
+  // ==========================================
+  async clickCaptchaCheckbox() {
+    try {
+      // 1. Wait for the reCAPTCHA iframe to load and switch into it
+      const iframe = await this.driver.wait(
+        until.elementLocated(this.recaptchaIframe),
+        10000
+      );
+      await this.driver.switchTo().frame(iframe);
+
+      // 2. Locate the checkbox inside the iframe and click it
+      const checkbox = await this.driver.wait(
+        until.elementLocated(this.recaptchaCheckbox),
+        10000
+      );
+      await this.driver.wait(until.elementIsVisible(checkbox), 10000);
+      await checkbox.click();
+
+      console.log("Clicked 'I'm not a robot' checkbox.");
+    } finally {
+      // 3. Always switch back to the main page context
+      await this.driver.switchTo().defaultContent();
+    }
+  }
+
+  // ==========================================
   // Check Login Page Elements
   // ==========================================
-
   async verifyLoginPage() {
     await this.driver.wait(until.elementLocated(this.emailInput), 10000);
-
     await this.driver.wait(until.elementLocated(this.passwordInput), 10000);
-
     await this.driver.wait(until.elementLocated(this.recaptcha), 10000);
-
     await this.driver.wait(until.elementLocated(this.signInForm), 10000);
-
     console.log("Login page elements are displayed.");
   }
 
   // ==========================================
-  // Wait for Manual CAPTCHA Completion
+  // Wait for CAPTCHA Completion
   // ==========================================
-
   async waitForCaptchaCompletion(timeout = 120000) {
     console.log("------------------------------------------");
-    console.log("Please complete the CAPTCHA manually.");
     console.log("Waiting for CAPTCHA verification...");
     console.log("------------------------------------------");
 
@@ -119,13 +126,11 @@ class LoginPage {
       try {
         const captchaCompleted = await this.driver.executeScript(() => {
           const response = document.querySelector("#g-recaptcha-response");
-
           return response && response.value && response.value.length > 0;
         });
 
         if (captchaCompleted) {
           console.log("CAPTCHA completed successfully.");
-
           return;
         }
       } catch (error) {
@@ -141,39 +146,20 @@ class LoginPage {
   // ==========================================
   // Click Sign In
   // ==========================================
-
   async clickSignIn() {
     const button = await this.driver.wait(
       until.elementLocated(this.signInButton),
-      10000,
+      10000
     );
-
     await this.driver.wait(until.elementIsVisible(button), 10000);
-
     await this.driver.wait(until.elementIsEnabled(button), 10000);
-
     await button.click();
-
     console.log("Sign In button clicked.");
   }
 
   // ==========================================
   // Complete Login
   // ==========================================
-
-  // async login(email, password) {
-
-  //     await this.closeSecurityAdvisoryIfDisplayed();
-
-  //     await this.enterEmail(email);
-
-  //     await this.enterPassword(password);
-
-  //     await this.waitForCaptchaCompletion();
-
-  //     await this.clickSignIn();
-  // }
-
   async login(email, password) {
     if (!email || !password) {
       throw new Error("Login failed: email or password is missing.");
@@ -184,23 +170,23 @@ class LoginPage {
     console.log("Password argument length:", password.length);
 
     await this.closeSecurityAdvisoryIfDisplayed();
-
     await this.enterEmail(email);
     await this.enterPassword(password);
 
     // Verify the entered field length, without exposing the password.
     const passwordField = await this.driver.findElement(this.passwordInput);
-
     const enteredLength = await passwordField.getAttribute("value");
 
     console.log("Password field length after entry:", enteredLength.length);
 
     if (enteredLength !== password) {
       throw new Error(
-        "Password field value does not match the supplied password.",
+        "Password field value does not match the supplied password."
       );
     }
 
+    // Click the checkbox, wait for verification, then click Sign In
+    await this.clickCaptchaCheckbox();
     await this.waitForCaptchaCompletion();
     await this.clickSignIn();
   }

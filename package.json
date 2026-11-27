@@ -18,7 +18,9 @@
     "test_global_search_email": "node utils/runTestsAndEmail.js tests/globalSearch/globalSearch.test.js reports/global-search GlobalSearchReport",
     
     "test_new_order_process_email": "node utils/runTestsAndEmail.js tests/all_tests/newOrderAndProcess.test.js reports/new-order-process NewOrderAndProcessReport",
-    "test_processor_portal_allTest_email": "node utils/runTestsAndEmail.js tests/all_tests/processorPortalAndGlobalSearchMerge.test.js reports/processor-portal-global-search ProcessorPortalAndGlobalSearchMergeReport"
+    "test_processor_portal_allTest_email": "node utils/runTestsAndEmail.js tests/all_tests/processorPortalAndGlobalSearchMerge.test.js reports/processor-portal-global-search ProcessorPortalAndGlobalSearchMergeReport",
+
+    "test:all": "npx mocha tests/all_tests/newOrderAndProcess.test.js tests/all_tests/processorPortalAndGlobalSearchMerge.test.js"
   },
   "keywords": [],
   "author": "",
