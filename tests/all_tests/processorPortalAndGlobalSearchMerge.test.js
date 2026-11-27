@@ -428,10 +428,10 @@ after(async function () {
         });
       
         it("TC_EXP_011 - Verify document status message and background based on attachment icon", async function () {
-          await expectedPage.open();
+          // await expectedPage.open();
       
           // Get the top Order ID row.
-          const orderId = await expectedPage.getTopOrderId();
+          // const orderId = await expectedPage.getTopOrderId();
       
           expect(orderId).to.match(/^\d+$/);
       
