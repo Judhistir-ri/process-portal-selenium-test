@@ -114,6 +114,84 @@ describe("Expected Page - Document Details Functional Test Cases", function () {
     expect(pageText).to.include("Customer Name");
   });
 
+
+  it("TC_EXP_0006 - Verify Document Status is displayed", async function () {
+    await expectedDetailsPage.clickTab("documentDetails");
+
+    const documentStatusLocator = By.xpath(
+      "//div[@id='docDetails']//span[normalize-space()='Document Status:']" +
+      "/following-sibling::span[1]"
+    );
+
+    const statusElement = await driver.wait(
+      async () => {
+        const elements = await driver.findElements(documentStatusLocator);
+
+        for (const element of elements) {
+          if (await element.isDisplayed()) {
+            const text = (await element.getText()).trim();
+            if (text) return element;
+          }
+        }
+
+        return false;
+      },
+      30000,
+      "Document Status was not displayed."
+    );
+
+    const documentStatus = (await statusElement.getText()).trim();
+
+    console.log("Document Status:", documentStatus);
+
+    expect(documentStatus).to.not.equal("");
+    expect(documentStatus).to.equal("Waiting");
+
+    console.log("✓ TC_EXP_006 - Document Status verified.");
+  });
+
+  
+  it("TC_EXP_0007 - Verify Payment Status is displayed", async function () {
+    await expectedDetailsPage.clickTab("documentDetails");
+
+    const paymentStatusLocator = By.xpath(
+        "//div[@id='docDetails']//span[normalize-space()='Payment Status:']" +
+        "/following-sibling::span[1]"
+    );
+
+    const statusElement = await driver.wait(
+        async () => {
+            const elements = await driver.findElements(paymentStatusLocator);
+
+            for (const element of elements) {
+                if (await element.isDisplayed()) {
+                    const text = (await element.getText()).trim();
+
+                    if (text) return element;
+                }
+            }
+
+            return false;
+        },
+        30000,
+        "Payment Status was not displayed."
+    );
+
+    const paymentStatus = (await statusElement.getText())
+        .replace(/\s+/g, " ")
+        .trim();
+
+    console.log("Payment Status:", paymentStatus);
+
+    // Verify that a payment status is displayed.
+    expect(paymentStatus).to.not.equal("");
+
+    // Verify that the payment status starts with Pay.
+    expect(paymentStatus.toLowerCase()).to.match(/^pay\b/);
+
+    console.log("✓ TC_EXP_007 - Payment Status verified.");
+  });
+
   it("TC_EXP_006 - Verify Send Payment Link", async function () {
     const status = await expectedDetailsPage.checkPaymentLinkStatus();
 
@@ -963,7 +1041,6 @@ await driver.wait(
 console.log("✓ TC_EXP_120 PASSED; Mark Payment modal closed.");
 
   });
-
 
   it("TC_EXP_019 - Verify partial payment updates Order Summary", async function () {
     await expectedDetailsPage.clickTab("documentDetails");
@@ -2050,7 +2127,7 @@ console.log("Verified Doc IDs:", docIds);
       console.log("Could not restore original tab:", error.message);
     }
   }
-});
+  });
 
 
   //================================================================================================

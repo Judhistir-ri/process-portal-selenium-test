@@ -1,14 +1,3 @@
-/*
- * MERGED TEST FILE
- * Source 1: Processor Portal suite (78 test cases)
- * Source 2: Global Search suite (14 test cases)
- *
- * Each source suite is intentionally enclosed in its own block scope.
- * This prevents duplicate top-level const/let declarations while preserving
- * each suite's original Mocha hooks, browser lifecycle, page objects and tests.
- *
- * Place this file at: tests/all_tests/processorPortalAndGlobalSearch.test.js
- */
 
 // One WebDriver session is shared by both suites.
 // Mocha executes the Processor Portal suite first, then Global Search.
@@ -264,6 +253,83 @@ after(async function () {
           expect(pageText).to.include("Customer Id");
       
           expect(pageText).to.include("Customer Name");
+        });
+
+        it("TC_EXP_0006 - Verify Document Status is displayed", async function () {
+          await expectedDetailsPage.clickTab("documentDetails");
+      
+          const documentStatusLocator = By.xpath(
+            "//div[@id='docDetails']//span[normalize-space()='Document Status:']" +
+            "/following-sibling::span[1]"
+          );
+      
+          const statusElement = await driver.wait(
+            async () => {
+              const elements = await driver.findElements(documentStatusLocator);
+      
+              for (const element of elements) {
+                if (await element.isDisplayed()) {
+                  const text = (await element.getText()).trim();
+                  if (text) return element;
+                }
+              }
+      
+              return false;
+            },
+            30000,
+            "Document Status was not displayed."
+          );
+      
+          const documentStatus = (await statusElement.getText()).trim();
+      
+          console.log("Document Status:", documentStatus);
+      
+          expect(documentStatus).to.not.equal("");
+          expect(documentStatus).to.equal("Waiting");
+      
+          console.log("✓ TC_EXP_006 - Document Status verified.");
+        });
+      
+        
+        it("TC_EXP_0007 - Verify Payment Status is displayed", async function () {
+          await expectedDetailsPage.clickTab("documentDetails");
+      
+          const paymentStatusLocator = By.xpath(
+              "//div[@id='docDetails']//span[normalize-space()='Payment Status:']" +
+              "/following-sibling::span[1]"
+          );
+      
+          const statusElement = await driver.wait(
+              async () => {
+                  const elements = await driver.findElements(paymentStatusLocator);
+      
+                  for (const element of elements) {
+                      if (await element.isDisplayed()) {
+                          const text = (await element.getText()).trim();
+      
+                          if (text) return element;
+                      }
+                  }
+      
+                  return false;
+              },
+              30000,
+              "Payment Status was not displayed."
+          );
+      
+          const paymentStatus = (await statusElement.getText())
+              .replace(/\s+/g, " ")
+              .trim();
+      
+          console.log("Payment Status:", paymentStatus);
+      
+          // Verify that a payment status is displayed.
+          expect(paymentStatus).to.not.equal("");
+      
+          // Verify that the payment status starts with Pay.
+          expect(paymentStatus.toLowerCase()).to.match(/^pay\b/);
+      
+          console.log("✓ TC_EXP_007 - Payment Status verified.");
         });
       
         it("TC_EXP_006 - Verify Send Payment Link", async function () {
